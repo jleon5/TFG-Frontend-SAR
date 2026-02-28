@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMINAL SAR // C2</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        sar: { DEFAULT: '#ff5722', dark: '#d84315', glow: 'rgba(255, 87, 34, 0.5)' },
+                        panel: '#111827',
+                        bgdark: '#0b0f19'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="bg-bgdark text-slate-300 h-screen flex flex-col overflow-hidden">
+
+    <header class="border-b border-gray-800 bg-panel px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-3">
+            <i class="ph-fill ph-crosshair text-sar text-3xl animate-pulse"></i>
+            <h1 class="font-mono text-xl font-bold tracking-widest text-white">SISTEMA <span class="text-sar">SAR</span> C2</h1>
+        </div>
+        <div class="flex items-center gap-4 text-sm font-mono">
+            <div id="status-indicator" class="flex items-center gap-2 text-gray-500">
+                <div class="w-2 h-2 rounded-full bg-gray-500" id="status-dot"></div>
+                <span id="status-text">DESCONECTADO</span>
+            </div>
+            <div class="bg-gray-800 rounded px-3 py-1 text-xs border border-gray-700">MODO: TÁCTICO</div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        
+        <aside class="w-80 bg-panel border-r border-gray-800 p-6 flex flex-col gap-6 overflow-y-auto">
+            
+            <div>
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Enlace de Datos (Cloudflare)</h3>
+                <input type="text" id="apiUrl" placeholder="https://...trycloudflare.com" 
+                    class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none focus:ring-1 focus:ring-sar font-mono transition-all">
+            </div>
+
+            <hr class="border-gray-800">
+
+            <div>
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Parámetros de Inferencia</h3>
+                
+                <label class="block text-sm mb-1 mt-3">Arquitectura IA</label>
+                <select id="modelSelect" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none">
+                    <option value="YOLO v12" selected>YOLO v12 (SARD)</option>
+                    <option value="YOLO v8">YOLO v8</option>
+                    <option value="YOLO v5">YOLO v5</option>
+                </select>
+
+                <label class="block text-sm mb-1 mt-4">Umbral de Confianza: <span id="confVal" class="text-sar font-mono">0.35</span></label>
+                <input type="range" id="confSlider" min="0.1" max="1.0" step="0.05" value="0.35" class="w-full accent-sar">
+            </div>
+
+            <hr class="border-gray-800">
+
+            <div>
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Carga de Telemetría (Video)</h3>
+                <input type="file" id="videoUpload" accept="video/mp4,video/x-m4v,video/*" class="hidden">
+                <label for="videoUpload" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg p-6 hover:border-sar hover:bg-gray-800 transition-all">
+                    <i class="ph ph-upload-simple text-3xl mb-2 text-gray-400"></i>
+                    <span class="text-sm text-center" id="fileName">Seleccionar archivo de dron</span>
+                </label>
+            </div>
+
+            <button id="btnProcess" class="mt-auto w-full bg-transparent border border-sar text-sar font-mono font-bold py-3 rounded hover:bg-sar hover:text-white hover:shadow-[0_0_15px_rgba(255,87,34,0.4)] transition-all flex justify-center items-center gap-2">
+                <i class="ph-bold ph-radar"></i> INICIAR ESCANEO
+            </button>
+        </aside>
+
+        <main class="flex-1 bg-bgdark p-6 relative flex flex-col">
+            
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-monitor"></i> FEED DE RESULTADOS</h2>
+                <div class="flex gap-4">
+                    <div class="bg-panel border border-gray-800 px-4 py-2 rounded font-mono text-sm">
+                        <span class="text-gray-500">ESTADO:</span> <span id="sysState" class="text-green-500">STANDBY</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-black border border-gray-800 rounded-lg relative overflow-hidden flex items-center justify-center shadow-lg group">
+                
+                <div id="loadingOverlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center backdrop-blur-sm">
+                    <i class="ph ph-spinner-gap animate-spin text-sar text-6xl mb-4"></i>
+                    <p class="font-mono text-sar tracking-widest animate-pulse">TRANSMITIENDO AL NODO GPU...</p>
+                    <p class="font-mono text-xs text-gray-400 mt-2">Aplicando inferencia tensorial</p>
+                </div>
+
+                <video id="resultVideo" class="max-w-full max-h-full hidden" controls autoplay muted loop></video>
+                
+                <div id="placeholder" class="text-center text-gray-600 font-mono">
+                    <i class="ph ph-video-camera text-6xl mb-3 opacity-50"></i>
+                    <p>SIN SEÑAL DE VIDEO</p>
+                </div>
+
+                <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
+                <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
+                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
+                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Referencias al DOM
+        const apiUrlInput = document.getElementById('apiUrl');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const confSlider = document.getElementById('confSlider');
+        const confVal = document.getElementById('confVal');
+        const videoUpload = document.getElementById('videoUpload');
+        const fileNameDisplay = document.getElementById('fileName');
+        const btnProcess = document.getElementById('btnProcess');
+        const modelSelect = document.getElementById('modelSelect');
+        const resultVideo = document.getElementById('resultVideo');
+        const placeholder = document.getElementById('placeholder');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const sysState = document.getElementById('sysState');
+
+        let selectedFile = null;
+
+        // 1. Efecto del slider
+        confSlider.addEventListener('input', (e) => {
+            confVal.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        // 2. Selección de archivo
+        videoUpload.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                fileNameDisplay.textContent = selectedFile.name;
+                fileNameDisplay.classList.add('text-white');
+            }
+        });
+
+        // 3. Chequeo visual de conexión (Básico)
+        apiUrlInput.addEventListener('input', () => {
+            let url = apiUrlInput.value.trim();
+            if (url.includes('trycloudflare.com')) {
+                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+                statusText.textContent = "ENLACE ESTABLECIDO";
+                statusText.classList.replace('text-gray-500', 'text-green-500');
+            } else {
+                statusDot.classList.replace('bg-green-500', 'bg-gray-500');
+                statusText.textContent = "DESCONECTADO";
+                statusText.classList.replace('text-green-500', 'text-gray-500');
+            }
+        });
+
+        // 4. Lógica de Inferencia (Llamada a la API)
+        btnProcess.addEventListener('click', async () => {
+            let baseUrl = apiUrlInput.value.trim();
+            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+
+            if (!baseUrl) return alert("Error: Introduce la URL de Cloudflare.");
+            if (!selectedFile) return alert("Error: Selecciona un archivo de video primero.");
+
+            // Mostrar UI de carga
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            sysState.textContent = "PROCESANDO (GPU)";
+            sysState.classList.replace('text-green-500', 'text-yellow-500');
+
+            // Preparar los datos
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('modelo', modelSelect.value);
+            formData.append('conf', confSlider.value);
+
+            try {
+                // Hacer la petición POST al backend
+                const response = await fetch(`${baseUrl}/analizar_video/`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
+                // Recibir el video en binario (Blob)
+                const blob = await response.blob();
+                const videoUrl = URL.createObjectURL(blob);
+
+                // Mostrar el video
+                placeholder.classList.add('hidden');
+                resultVideo.classList.remove('hidden');
+                resultVideo.src = videoUrl;
+                
+                sysState.textContent = "ANÁLISIS COMPLETADO";
+                sysState.classList.replace('text-yellow-500', 'text-green-500');
+
+            } catch (error) {
+                console.error(error);
+                alert("Fallo de conexión. ¿Has añadido CORS a la API de Colab?\nError: " + error.message);
+                sysState.textContent = "ERROR DE SISTEMA";
+                sysState.classList.replace('text-yellow-500', 'text-red-500');
+            } finally {
+                // Ocultar carga
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        });
+    </script>
+</body>
+</html>
