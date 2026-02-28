@@ -64,7 +64,7 @@
 
         <main class="flex-1 bg-bgdark p-6 relative flex flex-col overflow-y-auto">
             
-            <div class="flex gap-4 border-b border-gray-800 mb-6 font-mono text-sm">
+            <div class="flex gap-4 border-b border-gray-800 mb-6 font-mono text-sm shrink-0">
                 <button id="tab-scanner" class="px-4 py-2 border-b-2 border-sar text-sar font-bold">ESCÁNER ACTIVO</button>
                 <button id="tab-stats" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-white">INTELIGENCIA (STATS)</button>
             </div>
@@ -96,22 +96,53 @@
                 </div>
             </div>
 
-            <div id="view-stats" class="flex-1 hidden flex-col gap-6">
-                <div class="flex justify-between items-center bg-panel p-4 rounded border border-gray-800">
+            <div id="view-stats" class="hidden flex-col gap-6 pb-10">
+                <div class="flex justify-between items-center bg-panel p-4 rounded border border-gray-800 shrink-0">
                     <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-chart-line-up"></i> TELEMETRÍA DE SERVIDOR</h2>
                     <button id="btnLoadStats" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded font-mono text-sm border border-gray-600 transition-colors">
                         <i class="ph ph-arrows-clockwise"></i> ACTUALIZAR DATOS
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-2 gap-6 shrink-0">
                     <div class="bg-panel p-4 rounded border border-gray-800">
                         <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Rendimiento (FPS) por Misión Video</h3>
                         <canvas id="fpsChart" height="200"></canvas>
                     </div>
                     <div class="bg-panel p-4 rounded border border-gray-800">
-                        <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Carga Térmica CPU (%)</h3>
+                        <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase text-center">Carga Térmica CPU (%)</h3>
+                        <div class="text-center text-[10px] font-mono mb-2 text-gray-400">
+                            <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
+                            <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
+                        </div>
                         <canvas id="cpuChart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-panel p-4 rounded border border-gray-800 shrink-0">
+                    <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Comparativa: Tiempo de Procesamiento por Modelo (Segundos)</h3>
+                    <canvas id="modelChart" height="80"></canvas>
+                </div>
+
+                <div class="bg-panel rounded border border-gray-800 shrink-0 overflow-hidden">
+                    <div class="bg-gray-900 p-3 border-b border-gray-800">
+                        <h3 class="font-mono text-xs text-gray-400 uppercase tracking-widest"><i class="ph ph-database"></i> Historial Completo de Operaciones</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-64">
+                        <table class="w-full text-left text-sm font-mono whitespace-nowrap">
+                            <thead class="text-gray-500 bg-gray-800/50 sticky top-0">
+                                <tr>
+                                    <th class="p-3 font-normal">Fecha y Hora</th>
+                                    <th class="p-3 font-normal">Operación</th>
+                                    <th class="p-3 font-normal">Red Neuronal</th>
+                                    <th class="p-3 font-normal">FPS</th>
+                                    <th class="p-3 font-normal">Latencia</th>
+                                    <th class="p-3 font-normal">CPU</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="text-gray-300 divide-y divide-gray-800/50">
+                                </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -145,6 +176,7 @@
         let selectedFile = null;
         let fpsChartObj = null;
         let cpuChartObj = null;
+        let modelChartObj = null;
 
         // --- NAVEGACIÓN DE PESTAÑAS ---
         tabScanner.addEventListener('click', () => {
@@ -159,7 +191,7 @@
             viewScanner.classList.add('hidden'); viewScanner.classList.remove('flex');
             tabStats.classList.replace('border-transparent', 'border-sar'); tabStats.classList.replace('text-gray-500', 'text-sar');
             tabScanner.classList.replace('border-sar', 'border-transparent'); tabScanner.classList.replace('text-sar', 'text-gray-500');
-            loadStats(); // Auto-cargar stats al abrir pestaña
+            loadStats(); 
         });
 
         // --- INTERFAZ BÁSICA ---
@@ -180,7 +212,7 @@
             }
         });
 
-        // --- LÓGICA DE INFERENCIA (IMAGEN Y VIDEO) ---
+        // --- LÓGICA DE INFERENCIA ---
         btnProcess.addEventListener('click', async () => {
             let baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
             if (!baseUrl || !selectedFile) return alert("Falta configurar la URL o subir un archivo.");
@@ -233,41 +265,78 @@
                 if (!response.ok) return;
                 const csvText = await response.text();
 
-                // Convertir CSV a JSON usando PapaParse
                 Papa.parse(csvText, {
                     header: true, dynamicTyping: true, skipEmptyLines: true,
-                    complete: function(results) {
-                        renderCharts(results.data);
-                    }
+                    complete: function(results) { renderCharts(results.data); }
                 });
             } catch (error) { console.log("Aún no hay estadísticas o fallo la red."); }
         }
 
         function renderCharts(data) {
-            // Filtrar solo vídeos para la gráfica de FPS
-            const videoData = data.filter(d => d.Tipo === 'VIDEO');
-            const labels = videoData.map((_, i) => `Misión ${i+1}`);
-            const fpsData = videoData.map(d => d.FPS_Promedio);
-            const cpuData = data.map(d => d.CPU_Usage); // CPU para todas las operaciones
-            const cpuLabels = data.map((_, i) => `Op ${i+1}`);
-
-            // Destruir gráficas previas si existen
+            // Destruir gráficas previas
             if(fpsChartObj) fpsChartObj.destroy();
             if(cpuChartObj) cpuChartObj.destroy();
+            if(modelChartObj) modelChartObj.destroy();
 
-            // Configuración común Chart.js para modo oscuro
             Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+            // 1. Gráfica FPS (Solo Video)
+            const videoData = data.filter(d => d.Tipo === 'VIDEO');
+            const fpsLabels = videoData.map((_, i) => `Vis #${i+1}`);
+            const fpsData = videoData.map(d => d.FPS_Promedio);
 
             fpsChartObj = new Chart(document.getElementById('fpsChart'), {
                 type: 'line',
-                data: { labels: labels, datasets: [{ label: 'FPS', data: fpsData, borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] },
+                data: { labels: fpsLabels, datasets: [{ label: 'FPS', data: fpsData, borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] },
                 options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
             });
 
+            // 2. Gráfica CPU con Colores Diferenciados
+            const cpuLabels = data.map((_, i) => `Op #${i+1}`);
+            const cpuData = data.map(d => d.CPU_Usage);
+            const cpuColors = data.map(d => d.Tipo === 'VIDEO' ? 'rgba(255, 87, 34, 0.9)' : 'rgba(59, 130, 246, 0.9)');
+
             cpuChartObj = new Chart(document.getElementById('cpuChart'), {
                 type: 'bar',
-                data: { labels: cpuLabels, datasets: [{ label: '% Uso CPU', data: cpuData, backgroundColor: '#3b82f6' }] },
+                data: { labels: cpuLabels, datasets: [{ label: '% Uso CPU', data: cpuData, backgroundColor: cpuColors }] },
                 options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
+            });
+
+            // 3. Gráfica Comparativa de Modelos
+            const modelosUnicos = [...new Set(data.map(d => d.Modelo))];
+            const avgTimePerModel = modelosUnicos.map(modelo => {
+                const records = data.filter(d => d.Modelo === modelo);
+                const sum = records.reduce((acc, curr) => acc + curr.Duracion_Sec, 0);
+                return (sum / records.length).toFixed(2);
+            });
+
+            modelChartObj = new Chart(document.getElementById('modelChart'), {
+                type: 'bar',
+                data: { labels: modelosUnicos, datasets: [{ label: 'Latencia Media (s)', data: avgTimePerModel, backgroundColor: 'rgba(16, 185, 129, 0.8)' }] },
+                options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#1f2937' } }, y: { grid: { display: false } } } }
+            });
+
+            // 4. Llenar Tabla Histórico (Orden Inverso, del más nuevo al más viejo)
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            
+            [...data].reverse().forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-800/50 transition-colors";
+                
+                // Formatear colores
+                const tipoColor = row.Tipo === 'VIDEO' ? 'text-sar' : 'text-blue-500';
+                const fpsText = row.Tipo === 'VIDEO' ? `${row.FPS_Promedio} fps` : '-';
+
+                tr.innerHTML = `
+                    <td class="p-3">${row.Fecha} <span class="text-gray-500">${row.Hora}</span></td>
+                    <td class="p-3 font-bold ${tipoColor}">${row.Tipo}</td>
+                    <td class="p-3 text-emerald-400">${row.Modelo}</td>
+                    <td class="p-3">${fpsText}</td>
+                    <td class="p-3">${row.Duracion_Sec.toFixed(2)}s</td>
+                    <td class="p-3">${row.CPU_Usage}%</td>
+                `;
+                tbody.appendChild(tr);
             });
         }
     </script>
