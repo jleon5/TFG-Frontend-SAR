@@ -6,28 +6,13 @@
     <title>TERMINAL SAR // C2</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        sar: { DEFAULT: '#ff5722', dark: '#d84315', glow: 'rgba(255, 87, 34, 0.5)' },
-                        panel: '#111827',
-                        bgdark: '#0b0f19'
-                    }
-                }
-            }
-        }
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'], }, colors: { sar: { DEFAULT: '#ff5722', dark: '#d84315' }, panel: '#111827', bgdark: '#0b0f19' } } } }
     </script>
-
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body class="bg-bgdark text-slate-300 h-screen flex flex-col overflow-hidden">
 
@@ -41,111 +26,153 @@
                 <div class="w-2 h-2 rounded-full bg-gray-500" id="status-dot"></div>
                 <span id="status-text">DESCONECTADO</span>
             </div>
-            <div class="bg-gray-800 rounded px-3 py-1 text-xs border border-gray-700">MODO: TÁCTICO</div>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         
         <aside class="w-80 bg-panel border-r border-gray-800 p-6 flex flex-col gap-6 overflow-y-auto">
-            
             <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Enlace de Datos (Cloudflare)</h3>
-                <input type="text" id="apiUrl" placeholder="https://...trycloudflare.com" 
-                    class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none focus:ring-1 focus:ring-sar font-mono transition-all">
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Enlace de Datos</h3>
+                <input type="text" id="apiUrl" placeholder="https://...trycloudflare.com" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none font-mono">
             </div>
-
             <hr class="border-gray-800">
-
             <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Parámetros de Inferencia</h3>
-                
-                <label class="block text-sm mb-1 mt-3">Arquitectura IA</label>
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Parámetros IA</h3>
+                <label class="block text-sm mb-1 mt-3">Arquitectura</label>
                 <select id="modelSelect" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none">
                     <option value="YOLO v12" selected>YOLO v12 (SARD)</option>
                     <option value="YOLO v8">YOLO v8</option>
                     <option value="YOLO v5">YOLO v5</option>
                 </select>
-
-                <label class="block text-sm mb-1 mt-4">Umbral de Confianza: <span id="confVal" class="text-sar font-mono">0.35</span></label>
+                <label class="block text-sm mb-1 mt-4">Confianza: <span id="confVal" class="text-sar font-mono">0.35</span></label>
                 <input type="range" id="confSlider" min="0.1" max="1.0" step="0.05" value="0.35" class="w-full accent-sar">
             </div>
-
             <hr class="border-gray-800">
-
             <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Carga de Telemetría (Video)</h3>
-                <input type="file" id="videoUpload" accept="video/mp4,video/x-m4v,video/*" class="hidden">
-                <label for="videoUpload" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg p-6 hover:border-sar hover:bg-gray-800 transition-all">
+                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Telemetría (Imagen/Video)</h3>
+                <input type="file" id="mediaUpload" accept="video/*,image/*" class="hidden">
+                <label for="mediaUpload" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg p-6 hover:border-sar hover:bg-gray-800 transition-all">
                     <i class="ph ph-upload-simple text-3xl mb-2 text-gray-400"></i>
-                    <span class="text-sm text-center" id="fileName">Seleccionar archivo de dron</span>
+                    <span class="text-xs text-center break-all" id="fileName">Seleccionar archivo</span>
                 </label>
             </div>
-
-            <button id="btnProcess" class="mt-auto w-full bg-transparent border border-sar text-sar font-mono font-bold py-3 rounded hover:bg-sar hover:text-white hover:shadow-[0_0_15px_rgba(255,87,34,0.4)] transition-all flex justify-center items-center gap-2">
+            <button id="btnProcess" class="mt-auto w-full bg-transparent border border-sar text-sar font-mono font-bold py-3 rounded hover:bg-sar hover:text-white transition-all flex justify-center items-center gap-2">
                 <i class="ph-bold ph-radar"></i> INICIAR ESCANEO
             </button>
         </aside>
 
-        <main class="flex-1 bg-bgdark p-6 relative flex flex-col">
+        <main class="flex-1 bg-bgdark p-6 relative flex flex-col overflow-y-auto">
             
-            <div class="flex justify-between items-end mb-4">
-                <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-monitor"></i> FEED DE RESULTADOS</h2>
-                <div class="flex gap-4">
+            <div class="flex gap-4 border-b border-gray-800 mb-6 font-mono text-sm">
+                <button id="tab-scanner" class="px-4 py-2 border-b-2 border-sar text-sar font-bold">ESCÁNER ACTIVO</button>
+                <button id="tab-stats" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-white">INTELIGENCIA (STATS)</button>
+            </div>
+
+            <div id="view-scanner" class="flex-1 flex flex-col">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-monitor"></i> FEED DE RESULTADOS</h2>
                     <div class="bg-panel border border-gray-800 px-4 py-2 rounded font-mono text-sm">
                         <span class="text-gray-500">ESTADO:</span> <span id="sysState" class="text-green-500">STANDBY</span>
                     </div>
                 </div>
+
+                <div class="flex-1 bg-black border border-gray-800 rounded-lg relative overflow-hidden flex items-center justify-center shadow-lg group min-h-[400px]">
+                    <div id="loadingOverlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center backdrop-blur-sm">
+                        <i class="ph ph-spinner-gap animate-spin text-sar text-6xl mb-4"></i>
+                        <p class="font-mono text-sar tracking-widest animate-pulse">TRANSMITIENDO AL NODO GPU...</p>
+                    </div>
+
+                    <video id="resultVideo" class="max-w-full max-h-full hidden" controls autoplay muted loop></video>
+                    <img id="resultImage" class="max-w-full max-h-full hidden object-contain">
+                    
+                    <div id="placeholder" class="text-center text-gray-600 font-mono">
+                        <i class="ph ph-camera text-6xl mb-3 opacity-50"></i>
+                        <p>ESPERANDO ENTRADA DE DATOS</p>
+                    </div>
+
+                    <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
+                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
+                </div>
             </div>
 
-            <div class="flex-1 bg-black border border-gray-800 rounded-lg relative overflow-hidden flex items-center justify-center shadow-lg group">
-                
-                <div id="loadingOverlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center backdrop-blur-sm">
-                    <i class="ph ph-spinner-gap animate-spin text-sar text-6xl mb-4"></i>
-                    <p class="font-mono text-sar tracking-widest animate-pulse">TRANSMITIENDO AL NODO GPU...</p>
-                    <p class="font-mono text-xs text-gray-400 mt-2">Aplicando inferencia tensorial</p>
+            <div id="view-stats" class="flex-1 hidden flex-col gap-6">
+                <div class="flex justify-between items-center bg-panel p-4 rounded border border-gray-800">
+                    <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-chart-line-up"></i> TELEMETRÍA DE SERVIDOR</h2>
+                    <button id="btnLoadStats" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded font-mono text-sm border border-gray-600 transition-colors">
+                        <i class="ph ph-arrows-clockwise"></i> ACTUALIZAR DATOS
+                    </button>
                 </div>
-
-                <video id="resultVideo" class="max-w-full max-h-full hidden" controls autoplay muted loop></video>
                 
-                <div id="placeholder" class="text-center text-gray-600 font-mono">
-                    <i class="ph ph-video-camera text-6xl mb-3 opacity-50"></i>
-                    <p>SIN SEÑAL DE VIDEO</p>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-panel p-4 rounded border border-gray-800">
+                        <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Rendimiento (FPS) por Misión Video</h3>
+                        <canvas id="fpsChart" height="200"></canvas>
+                    </div>
+                    <div class="bg-panel p-4 rounded border border-gray-800">
+                        <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Carga Térmica CPU (%)</h3>
+                        <canvas id="cpuChart" height="200"></canvas>
+                    </div>
                 </div>
-
-                <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
-                <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
-                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
-                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
             </div>
+
         </main>
     </div>
 
     <script>
-        // Referencias al DOM
         const apiUrlInput = document.getElementById('apiUrl');
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
         const confSlider = document.getElementById('confSlider');
         const confVal = document.getElementById('confVal');
-        const videoUpload = document.getElementById('videoUpload');
+        const mediaUpload = document.getElementById('mediaUpload');
         const fileNameDisplay = document.getElementById('fileName');
         const btnProcess = document.getElementById('btnProcess');
         const modelSelect = document.getElementById('modelSelect');
+        
         const resultVideo = document.getElementById('resultVideo');
+        const resultImage = document.getElementById('resultImage');
         const placeholder = document.getElementById('placeholder');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const sysState = document.getElementById('sysState');
 
-        let selectedFile = null;
+        // Pestañas
+        const tabScanner = document.getElementById('tab-scanner');
+        const tabStats = document.getElementById('tab-stats');
+        const viewScanner = document.getElementById('view-scanner');
+        const viewStats = document.getElementById('view-stats');
 
-        // 1. Efecto del slider
-        confSlider.addEventListener('input', (e) => {
-            confVal.textContent = parseFloat(e.target.value).toFixed(2);
+        let selectedFile = null;
+        let fpsChartObj = null;
+        let cpuChartObj = null;
+
+        // --- NAVEGACIÓN DE PESTAÑAS ---
+        tabScanner.addEventListener('click', () => {
+            viewScanner.classList.remove('hidden'); viewScanner.classList.add('flex');
+            viewStats.classList.add('hidden'); viewStats.classList.remove('flex');
+            tabScanner.classList.replace('border-transparent', 'border-sar'); tabScanner.classList.replace('text-gray-500', 'text-sar');
+            tabStats.classList.replace('border-sar', 'border-transparent'); tabStats.classList.replace('text-sar', 'text-gray-500');
         });
 
-        // 2. Selección de archivo
-        videoUpload.addEventListener('change', (e) => {
+        tabStats.addEventListener('click', () => {
+            viewStats.classList.remove('hidden'); viewStats.classList.add('flex');
+            viewScanner.classList.add('hidden'); viewScanner.classList.remove('flex');
+            tabStats.classList.replace('border-transparent', 'border-sar'); tabStats.classList.replace('text-gray-500', 'text-sar');
+            tabScanner.classList.replace('border-sar', 'border-transparent'); tabScanner.classList.replace('text-sar', 'text-gray-500');
+            loadStats(); // Auto-cargar stats al abrir pestaña
+        });
+
+        // --- INTERFAZ BÁSICA ---
+        confSlider.addEventListener('input', (e) => confVal.textContent = parseFloat(e.target.value).toFixed(2));
+        
+        apiUrlInput.addEventListener('input', () => {
+            if (apiUrlInput.value.includes('trycloudflare.com')) {
+                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
+                statusText.textContent = "ENLACE ESTABLECIDO"; statusText.classList.replace('text-gray-500', 'text-green-500');
+            }
+        });
+
+        mediaUpload.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 selectedFile = e.target.files[0];
                 fileNameDisplay.textContent = selectedFile.name;
@@ -153,72 +180,96 @@
             }
         });
 
-        // 3. Chequeo visual de conexión (Básico)
-        apiUrlInput.addEventListener('input', () => {
-            let url = apiUrlInput.value.trim();
-            if (url.includes('trycloudflare.com')) {
-                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-                statusText.textContent = "ENLACE ESTABLECIDO";
-                statusText.classList.replace('text-gray-500', 'text-green-500');
-            } else {
-                statusDot.classList.replace('bg-green-500', 'bg-gray-500');
-                statusText.textContent = "DESCONECTADO";
-                statusText.classList.replace('text-green-500', 'text-gray-500');
-            }
-        });
-
-        // 4. Lógica de Inferencia (Llamada a la API)
+        // --- LÓGICA DE INFERENCIA (IMAGEN Y VIDEO) ---
         btnProcess.addEventListener('click', async () => {
-            let baseUrl = apiUrlInput.value.trim();
-            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+            let baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
+            if (!baseUrl || !selectedFile) return alert("Falta configurar la URL o subir un archivo.");
 
-            if (!baseUrl) return alert("Error: Introduce la URL de Cloudflare.");
-            if (!selectedFile) return alert("Error: Selecciona un archivo de video primero.");
+            loadingOverlay.classList.remove('hidden'); loadingOverlay.classList.add('flex');
+            sysState.textContent = "PROCESANDO (GPU)"; sysState.className = "text-yellow-500";
+            
+            resultVideo.classList.add('hidden'); resultImage.classList.add('hidden'); placeholder.classList.add('hidden');
 
-            // Mostrar UI de carga
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.classList.add('flex');
-            sysState.textContent = "PROCESANDO (GPU)";
-            sysState.classList.replace('text-green-500', 'text-yellow-500');
-
-            // Preparar los datos
+            const isVideo = selectedFile.type.startsWith('video/');
+            const endpoint = isVideo ? '/analizar_video/' : '/analizar_imagen/';
+            
             const formData = new FormData();
             formData.append('file', selectedFile);
             formData.append('modelo', modelSelect.value);
             formData.append('conf', confSlider.value);
 
             try {
-                // Hacer la petición POST al backend
-                const response = await fetch(`${baseUrl}/analizar_video/`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch(`${baseUrl}${endpoint}`, { method: 'POST', body: formData });
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-
-                // Recibir el video en binario (Blob)
                 const blob = await response.blob();
-                const videoUrl = URL.createObjectURL(blob);
+                const fileUrl = URL.createObjectURL(blob);
 
-                // Mostrar el video
-                placeholder.classList.add('hidden');
-                resultVideo.classList.remove('hidden');
-                resultVideo.src = videoUrl;
+                if (isVideo) {
+                    resultVideo.src = fileUrl; resultVideo.classList.remove('hidden');
+                } else {
+                    resultImage.src = fileUrl; resultImage.classList.remove('hidden');
+                }
                 
-                sysState.textContent = "ANÁLISIS COMPLETADO";
-                sysState.classList.replace('text-yellow-500', 'text-green-500');
-
+                sysState.textContent = "COMPLETADO"; sysState.className = "text-green-500";
             } catch (error) {
-                console.error(error);
-                alert("Fallo de conexión. ¿Has añadido CORS a la API de Colab?\nError: " + error.message);
-                sysState.textContent = "ERROR DE SISTEMA";
-                sysState.classList.replace('text-yellow-500', 'text-red-500');
+                console.error(error); alert("Fallo en la comunicación con la IA.");
+                sysState.textContent = "ERROR TÁCTICO"; sysState.className = "text-red-500";
+                placeholder.classList.remove('hidden');
             } finally {
-                // Ocultar carga
-                loadingOverlay.classList.add('hidden');
-                loadingOverlay.classList.remove('flex');
+                loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex');
             }
         });
+
+        // --- LÓGICA DE ESTADÍSTICAS ---
+        document.getElementById('btnLoadStats').addEventListener('click', loadStats);
+
+        async function loadStats() {
+            let baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
+            if (!baseUrl) return;
+
+            try {
+                const response = await fetch(`${baseUrl}/estadisticas/`);
+                if (!response.ok) return;
+                const csvText = await response.text();
+
+                // Convertir CSV a JSON usando PapaParse
+                Papa.parse(csvText, {
+                    header: true, dynamicTyping: true, skipEmptyLines: true,
+                    complete: function(results) {
+                        renderCharts(results.data);
+                    }
+                });
+            } catch (error) { console.log("Aún no hay estadísticas o fallo la red."); }
+        }
+
+        function renderCharts(data) {
+            // Filtrar solo vídeos para la gráfica de FPS
+            const videoData = data.filter(d => d.Tipo === 'VIDEO');
+            const labels = videoData.map((_, i) => `Misión ${i+1}`);
+            const fpsData = videoData.map(d => d.FPS_Promedio);
+            const cpuData = data.map(d => d.CPU_Usage); // CPU para todas las operaciones
+            const cpuLabels = data.map((_, i) => `Op ${i+1}`);
+
+            // Destruir gráficas previas si existen
+            if(fpsChartObj) fpsChartObj.destroy();
+            if(cpuChartObj) cpuChartObj.destroy();
+
+            // Configuración común Chart.js para modo oscuro
+            Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+            fpsChartObj = new Chart(document.getElementById('fpsChart'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: 'FPS', data: fpsData, borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
+            });
+
+            cpuChartObj = new Chart(document.getElementById('cpuChart'), {
+                type: 'bar',
+                data: { labels: cpuLabels, datasets: [{ label: '% Uso CPU', data: cpuData, backgroundColor: '#3b82f6' }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
+            });
+        }
     </script>
 </body>
 </html>
