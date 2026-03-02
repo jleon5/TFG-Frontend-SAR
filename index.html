@@ -8,260 +8,310 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        sar: { DEFAULT: '#ff5722', dark: '#d84315', glow: 'rgba(255, 87, 34, 0.5)' },
-                        panel: '#111827',
-                        bgdark: '#0b0f19'
-                    }
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'], },
+                    colors: { sar: { DEFAULT: '#ff5722', dark: '#d84315' }, panel: '#111827', bgdark: '#0b0f19' }
                 }
             }
         }
     </script>
 
     <style>
-        /* Transición suave para el cambio de tema */
-        .transition-theme { transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+        .transition-theme { transition: all 0.3s ease; }
         
-        /* Ocultar barra de desplazamiento pero mantener funcionalidad */
-        ::-webkit-scrollbar { width: 4px; }
+        /* Fondo Topográfico Tenue */
+        .topo-bg {
+            background-color: transparent;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 800 800'%3E%3Cpath fill='none' stroke='%23444' stroke-width='0.5' d='M800 568.3c-23.7 10.4-48.4 18.2-73.8 23.2-26.2 5.1-53 7.7-79.8 7.7-41.2 0-81.4-6-119.3-17.4-30.6-9.2-59.4-21.8-86-37.4-25.9-15.2-49.1-33-69.5-53.1-18.1-17.8-33.6-37.5-46.3-58.7-12.7-21.1-22.4-43.7-29-67.4-6.6-23.6-10-48.1-10-72.7 0-31.5 5.5-62.4 16.1-91.6 11.2-30.8 28.1-59.2 49.9-84.3 21.1-24.3 46.2-45 74.2-61.1 27.2-15.6 56.6-27.2 87.1-34.4C444 14 474.3 10.5 505 10.5c31.1 0 61.8 3.6 91.5 10.8 29.8 7.2 58.4 18.6 84.8 33.9 26.1 15.1 49.6 34.2 69.8 56.5 20.3 22.3 36.9 47.9 49.4 75.9 12.5 28.1 19.5 58.1 20.9 89.1.7 15.4.1 30.8-1.9 46.1-2.1 16.3-5.4 32.4-10 48.1-4.7 16-10.7 31.4-17.9 46.2s-15.8 28.7-25.5 41.8c-10.4 14.2-22.1 27.3-34.9 39.4'/%3E%3C/svg%3E");
+            opacity: 0.1;
+        }
+        .dark .topo-bg { opacity: 0.05; filter: invert(1); }
+
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #ff5722; border-radius: 10px; }
     </style>
 </head>
 
-<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-screen flex flex-col overflow-hidden transition-theme">
+<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-screen flex flex-col overflow-hidden transition-theme relative">
+    
+    <div class="absolute inset-0 topo-bg pointer-events-none z-0"></div>
 
-    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-panel flex items-center justify-between px-6 shrink-0 z-50">
+    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-50">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-sar rounded flex items-center justify-center shadow-lg shadow-sar/20">
                 <i class="ph-bold ph-broadcast text-white text-xl"></i>
             </div>
-            <div>
-                <h1 class="font-mono font-bold tracking-tighter text-lg leading-none">SAR AI SYSTEM</h1>
-                <span id="sysState" class="text-[10px] font-mono text-green-500 uppercase tracking-widest">SISTEMA EN LÍNEA</span>
-            </div>
+            <h1 class="font-mono font-bold tracking-tighter text-lg leading-none">SAR AI SYSTEM <span class="text-sar text-[10px] ml-2 opacity-50">V2.0</span></h1>
         </div>
-
         <div class="flex items-center gap-4">
-            <button id="themeToggle" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:scale-110 transition-all">
+            <button id="btnOpenStats" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sar/10 hover:text-sar transition-all text-xs font-mono">
+                <i class="ph ph-chart-line-up text-lg"></i> INTELIGENCIA
+            </button>
+            <button id="themeToggle" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:rotate-12 transition-all">
                 <i id="themeIcon" class="ph ph-moon-stars text-xl"></i>
             </button>
-            <div class="h-8 w-[1px] bg-slate-200 dark:border-slate-800"></div>
-            <div class="text-right hidden sm:block">
-                <p class="text-[10px] font-mono opacity-50 uppercase">Operación Local</p>
-                <p id="clock" class="text-xs font-mono font-bold">00:00:00 UTC</p>
-            </div>
         </div>
     </header>
 
-    <main class="flex flex-1 overflow-hidden">
-        
-        <aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-panel p-6 flex flex-col gap-6 overflow-y-auto shrink-0 transition-theme">
-            
+    <main class="flex flex-1 overflow-hidden z-10">
+        <aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-6 flex flex-col gap-6 overflow-y-auto shrink-0 transition-theme">
             <section class="space-y-3">
-                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Enlace de Comunicación (API)</label>
-                <input type="text" id="apiUrl" 
-                    placeholder="https://xyz.trycloudflare.com"
-                    class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs font-mono outline-none focus:border-sar transition-all">
+                <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Enlace API</label>
+                <input type="text" id="apiUrl" placeholder="https://..." class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs font-mono outline-none focus:ring-1 focus:ring-sar">
             </section>
-
             <section class="space-y-4">
-                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Configuración de IA</label>
-                
+                <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Configuración</label>
+                <select id="modelSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none">
+                    <option value="YOLO v12">YOLO v12 (Precisión)</option>
+                    <option value="YOLO v8">YOLO v8 (Balanceado)</option>
+                </select>
                 <div class="space-y-2">
-                    <p class="text-xs">Modelo Operativo</p>
-                    <select id="modelSelect" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none focus:border-sar">
-                        <option value="YOLO v12">YOLO v12 (Precision+)</option>
-                        <option value="YOLO v8">YOLO v8 (Balanced)</option>
-                        <option value="YOLO v5">YOLO v5 (Legacy)</option>
-                    </select>
-                </div>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between">
-                        <p class="text-xs">Confianza</p>
-                        <span id="confValue" class="text-xs font-mono text-sar">0.35</span>
-                    </div>
-                    <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35"
-                        class="w-full accent-sar h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
+                    <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35" class="w-full accent-sar cursor-pointer">
                 </div>
             </section>
-
             <section class="flex-1 flex flex-col gap-4">
-                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Entrada de Datos</label>
-                
-                <div id="dropZone" class="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-4 hover:border-sar/50 transition-colors cursor-pointer group">
+                <div id="dropZone" class="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
                     <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
-                    <i class="ph ph-cloud-arrow-up text-4xl mb-2 text-slate-400 group-hover:text-sar group-hover:scale-110 transition-all"></i>
-                    <p class="text-[10px] text-center uppercase font-mono text-slate-500">Arrastra archivos o haz clic aquí</p>
+                    <i class="ph ph-upload-simple text-4xl mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
+                    <p class="text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
                     <p id="fileName" class="text-[10px] mt-2 text-sar font-bold truncate max-w-full"></p>
                 </div>
-
-                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg shadow-sar/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                    INICIAR ANÁLISIS
-                </button>
+                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">ANALIZAR SEÑAL</button>
             </section>
-
         </aside>
 
-        <section class="flex-1 p-8 flex items-center justify-center relative bg-slate-50 dark:bg-bgdark transition-theme overflow-auto">
-            
-            <div id="resultContainer" class="relative max-w-full max-h-full flex items-center justify-center rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-500 min-h-[400px] min-w-[300px]">
-                
-                <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-30">
-                    <i class="ph ph-scan-eye text-8xl"></i>
-                    <p class="font-mono text-sm tracking-[0.2em]">SIN SEÑAL DE VÍDEO</p>
-                </div>
-
-                <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain" src="" alt="Resultado">
-                <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain" controls autoplay loop muted></video>
-
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/80 dark:bg-bgdark/80 hidden items-center justify-center flex-col gap-4 backdrop-blur-sm z-10">
-                    <div class="w-12 h-12 border-4 border-slate-300 border-t-sar rounded-full animate-spin"></div>
-                    <p class="font-mono text-xs animate-pulse">PROCESANDO FRAME POR FRAME...</p>
-                </div>
+        <section class="flex-1 p-8 flex items-center justify-center relative overflow-auto">
+            <div id="resultContainer" class="relative max-w-full max-h-full flex items-center justify-center rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[400px] min-w-[300px]">
+                <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-20"><i class="ph ph-radar text-8xl animate-pulse"></i><p class="font-mono text-sm tracking-widest">SISTEMA LISTO</p></div>
+                <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" src="">
+                <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" controls autoplay loop muted></video>
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/90 dark:bg-bgdark/90 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-10"><div class="w-12 h-12 border-4 border-slate-300 border-t-sar rounded-full animate-spin"></div><p class="font-mono text-xs tracking-tighter">DESCODIFICANDO...</p></div>
             </div>
-
-            <button id="btnDownload" class="absolute bottom-12 right-12 p-4 bg-green-600 text-white rounded-full shadow-xl hidden hover:scale-110 transition-all active:scale-95">
-                <i class="ph-bold ph-download-simple text-2xl"></i>
-            </button>
+            <button id="btnDownload" class="absolute bottom-12 right-12 p-4 bg-green-600 text-white rounded-full shadow-2xl hidden hover:scale-110 active:scale-95 transition-all"><i class="ph-bold ph-download-simple text-2xl"></i></button>
         </section>
-
     </main>
 
+    <div id="statsModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-panel w-full max-w-6xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+            
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0">
+                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200"><i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA</h2>
+                <button id="btnCloseStats" class="p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
+                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center">Rendimiento (FPS) por Misión Video</h3>
+                        <canvas id="fpsChart" height="200"></canvas>
+                    </div>
+                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h3 class="font-mono text-xs text-slate-500 mb-2 uppercase text-center">Carga Térmica CPU (%)</h3>
+                        <div class="text-center text-[10px] font-mono mb-2 text-slate-400">
+                            <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
+                            <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
+                        </div>
+                        <canvas id="cpuChart" height="200"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
+                    <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center">Comparativa: Tiempo de Procesamiento Medio por Modelo (Segundos)</h3>
+                    <canvas id="modelChart" height="60"></canvas>
+                </div>
+
+                <div class="bg-white dark:bg-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
+                    <div class="bg-slate-50 dark:bg-slate-900 p-3 border-b border-slate-200 dark:border-slate-800">
+                        <h3 class="font-mono text-xs text-slate-500 uppercase tracking-widest"><i class="ph ph-database"></i> Registro Completo de Operaciones</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-64">
+                        <table class="w-full text-left text-xs font-mono border-collapse whitespace-nowrap">
+                            <thead class="sticky top-0 bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10">
+                                <tr>
+                                    <th class="p-3">FECHA Y HORA</th><th class="p-3">OPERACIÓN</th><th class="p-3">RED NEURONAL</th><th class="p-3">FPS</th><th class="p-3">LATENCIA</th><th class="p-3">CPU</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- ELEMENTOS ---
-        const themeToggle = document.getElementById('themeToggle');
-        const themeIcon = document.getElementById('themeIcon');
-        const htmlElement = document.documentElement;
-        
-        const btnProcess = document.getElementById('btnProcess');
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const resultImage = document.getElementById('resultImage');
-        const resultVideo = document.getElementById('resultVideo');
-        const placeholder = document.getElementById('placeholder');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const apiUrlInput = document.getElementById('apiUrl');
-        const sysState = document.getElementById('sysState');
+        // --- VARIABLES GLOBALES ---
+        const htmlDoc = document.documentElement;
+        let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
 
-        // --- MODO OSCURO / CLARO ---
+        const els = {
+            themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
+            btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
+            apiUrl: document.getElementById('apiUrl'), resultImage: document.getElementById('resultImage'),
+            resultVideo: document.getElementById('resultVideo'), loading: document.getElementById('loadingOverlay'),
+            placeholder: document.getElementById('placeholder'), btnStats: document.getElementById('btnOpenStats'),
+            statsModal: document.getElementById('statsModal'), btnCloseStats: document.getElementById('btnCloseStats'),
+            statsTable: document.getElementById('statsTableBody')
+        };
+
+        // --- TEMA (CLARO/OSCURO) ---
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            htmlElement.classList.add('dark');
-            themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
+            htmlDoc.classList.add('dark'); els.themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
         }
+        els.themeToggle.onclick = () => {
+            const isDark = htmlDoc.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            els.themeIcon.classList.replace(isDark ? 'ph-sun' : 'ph-moon-stars', isDark ? 'ph-moon-stars' : 'ph-sun');
+            // Repintar gráficas si están abiertas
+            if (!els.statsModal.classList.contains('hidden')) loadStatsData();
+        };
 
-        themeToggle.addEventListener('click', () => {
-            if (htmlElement.classList.contains('dark')) {
-                htmlElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                themeIcon.classList.replace('ph-sun', 'ph-moon-stars');
-            } else {
-                htmlElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
-            }
-        });
-
-        // --- RELOJ ---
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock').textContent = now.toISOString().split('T')[1].split('.')[0] + ' UTC';
-        }, 1000);
-
-        // --- MANEJO DE ARCHIVOS ---
+        // --- ARCHIVOS ---
         let selectedFile = null;
-
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => {
+        document.getElementById('dropZone').onclick = () => els.fileInput.click();
+        els.fileInput.onchange = (e) => {
             selectedFile = e.target.files[0];
             if(selectedFile) document.getElementById('fileName').textContent = selectedFile.name;
         };
 
-        // --- LOGICA DE PROCESAMIENTO ---
-        btnProcess.addEventListener('click', async () => {
-            let baseUrl = apiUrlInput.value.trim();
-            if (!baseUrl) return alert("Por favor, introduce la URL de Cloudflare");
-            if (!selectedFile) return alert("Selecciona una imagen o vídeo primero");
-            
-            // Limpieza de URL
-            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        // --- PROCESAMIENTO ---
+        els.btnProcess.onclick = async () => {
+            let url = els.apiUrl.value.trim().replace(/\/$/, "");
+            if (!url || !selectedFile) return alert("Configura la API y selecciona un archivo");
 
-            // UI State
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.classList.add('flex');
-            placeholder.classList.add('hidden');
-            resultImage.classList.add('hidden');
-            resultVideo.classList.add('hidden');
-            sysState.textContent = "ANALIZANDO...";
-            sysState.className = "text-[10px] font-mono text-sar animate-pulse";
+            els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
+            els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); els.placeholder.classList.add('hidden');
 
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('modelo', document.getElementById('modelSelect').value);
-            formData.append('conf', document.getElementById('confSlider').value);
+            const fd = new FormData();
+            fd.append('file', selectedFile);
+            fd.append('modelo', document.getElementById('modelSelect').value);
+            fd.append('conf', document.getElementById('confSlider').value);
 
             const isVideo = selectedFile.type.startsWith('video');
-            const endpoint = isVideo ? '/analizar_video/' : '/analizar_imagen/';
+            try {
+                const res = await fetch(`${url}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd });
+                if(!res.ok) throw new Error();
+                const blob = await res.blob();
+                const bUrl = URL.createObjectURL(blob);
+
+                if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
+                else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
+                
+                document.getElementById('btnDownload').classList.remove('hidden');
+                document.getElementById('btnDownload').onclick = () => {
+                    const a = document.createElement('a'); a.href = bUrl; a.download = "sar_result_"+selectedFile.name; a.click();
+                };
+            } catch (e) {
+                alert("Error de conexión"); els.placeholder.classList.remove('hidden');
+            } finally { els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); }
+        };
+
+        document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
+
+        // --- ESTADÍSTICAS Y GRÁFICOS ---
+        els.btnStats.onclick = () => {
+            els.statsModal.classList.replace('hidden', 'flex');
+            els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>';
+            loadStatsData();
+        };
+        els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
+
+        async function loadStatsData() {
+            let baseUrl = els.apiUrl.value.trim().replace(/\/$/, "");
+            if (!baseUrl) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">API NO CONFIGURADA</td></tr>'; return; }
 
             try {
-                const response = await fetch(`${baseUrl}${endpoint}`, {
-                    method: 'POST',
-                    body: formData
+                const response = await fetch(`${baseUrl}/estadisticas/`);
+                if (!response.ok) throw new Error();
+                const csvText = await response.text();
+
+                Papa.parse(csvText, {
+                    header: true, dynamicTyping: true, skipEmptyLines: true,
+                    complete: function(results) { 
+                        renderTable(results.data);
+                        renderCharts(results.data); 
+                    }
                 });
-
-                if (!response.ok) throw new Error("Fallo en el servidor");
-
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-
-                if (isVideo) {
-                    resultVideo.src = url;
-                    resultVideo.classList.remove('hidden');
-                } else {
-                    resultImage.src = url;
-                    resultImage.classList.remove('hidden');
-                }
-
-                sysState.textContent = "ANÁLISIS COMPLETADO";
-                sysState.className = "text-[10px] font-mono text-green-500";
-                
-                // Activar descarga
-                const btnDl = document.getElementById('btnDownload');
-                btnDl.classList.remove('hidden');
-                btnDl.onclick = () => {
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `sar_detect_${selectedFile.name}`;
-                    a.click();
-                };
-
-            } catch (err) {
-                console.error(err);
-                alert("Error de comunicación. Comprueba el túnel de Cloudflare y el CORS.");
-                sysState.textContent = "ERROR DE CONEXIÓN";
-                sysState.className = "text-[10px] font-mono text-red-500";
-                placeholder.classList.remove('hidden');
-            } finally {
-                loadingOverlay.classList.add('hidden');
-                loadingOverlay.classList.remove('flex');
+            } catch (error) { 
+                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">SIN DATOS DE TELEMETRÍA</td></tr>'; 
             }
-        });
+        }
 
-        // Slider sync
-        document.getElementById('confSlider').addEventListener('input', (e) => {
-            document.getElementById('confValue').textContent = e.target.value;
-        });
+        function renderTable(data) {
+            els.statsTable.innerHTML = [...data].reverse().map(row => {
+                const tipoColor = row.Tipo === 'VIDEO' ? 'text-sar' : 'text-blue-500';
+                const fpsText = row.Tipo === 'VIDEO' ? `${row.FPS_Promedio} fps` : '-';
+                return `<tr class="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <td class="p-3">${row.Fecha} <span class="text-slate-400">${row.Hora}</span></td>
+                    <td class="p-3 font-bold ${tipoColor}">${row.Tipo}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] border border-emerald-200 dark:border-emerald-800">${row.Modelo}</span></td>
+                    <td class="p-3">${fpsText}</td>
+                    <td class="p-3">${row.Duracion_Sec.toFixed(2)}s</td>
+                    <td class="p-3">${row.CPU_Usage}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderCharts(data) {
+            if(fpsChartObj) fpsChartObj.destroy();
+            if(cpuChartObj) cpuChartObj.destroy();
+            if(modelChartObj) modelChartObj.destroy();
+
+            // Adaptar colores al tema actual
+            const isDark = htmlDoc.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#475569';
+            const gridColor = isDark ? '#1e293b' : '#e2e8f0';
+            Chart.defaults.color = textColor; 
+            Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+            // 1. Gráfica FPS (Solo Video)
+            const videoData = data.filter(d => d.Tipo === 'VIDEO');
+            const fpsLabels = videoData.map((_, i) => `Vis #${i+1}`);
+            const fpsData = videoData.map(d => d.FPS_Promedio);
+
+            fpsChartObj = new Chart(document.getElementById('fpsChart'), {
+                type: 'line',
+                data: { labels: fpsLabels, datasets: [{ label: 'FPS', data: fpsData, borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+            });
+
+            // 2. Gráfica CPU
+            const cpuLabels = data.map((_, i) => `Op #${i+1}`);
+            const cpuData = data.map(d => d.CPU_Usage);
+            const cpuColors = data.map(d => d.Tipo === 'VIDEO' ? 'rgba(255, 87, 34, 0.9)' : 'rgba(59, 130, 246, 0.9)');
+
+            cpuChartObj = new Chart(document.getElementById('cpuChart'), {
+                type: 'bar',
+                data: { labels: cpuLabels, datasets: [{ label: '% Uso CPU', data: cpuData, backgroundColor: cpuColors, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+            });
+
+            // 3. Gráfica Modelos
+            const modelosUnicos = [...new Set(data.map(d => d.Modelo))];
+            const avgTimePerModel = modelosUnicos.map(modelo => {
+                const records = data.filter(d => d.Modelo === modelo);
+                return (records.reduce((acc, curr) => acc + curr.Duracion_Sec, 0) / records.length).toFixed(2);
+            });
+
+            modelChartObj = new Chart(document.getElementById('modelChart'), {
+                type: 'bar',
+                data: { labels: modelosUnicos, datasets: [{ label: 'Latencia Media (s)', data: avgTimePerModel, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 4 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: gridColor } }, y: { grid: { display: false } } } }
+            });
+        }
     </script>
 </body>
 </html>
