@@ -34,11 +34,10 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            opacity: 0.15; /* Opacidad sutil para que no estorbe en modo claro */
+            opacity: 0.15; 
         }
         .dark .topo-bg { 
-            opacity: 0.10; /* Aún más sutil en modo oscuro */
-            /* Eliminado el filter: invert(1) porque es un JPG y se vería en negativo */
+            opacity: 0.10; 
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -74,9 +73,16 @@
 
     <main class="flex flex-1 overflow-hidden z-10">
         <aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-6 flex flex-col gap-6 overflow-y-auto shrink-0 transition-theme relative z-20">
+            
             <section class="space-y-3">
-                <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Enlace API</label>
-                <input type="text" id="apiUrl" placeholder="https://..." class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs font-mono outline-none focus:ring-1 focus:ring-sar">
+                <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Estado del Nodo C2 (GPU)</label>
+                <div id="nodeStatusBg" class="w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500">
+                    <div class="relative flex h-3 w-3">
+                      <span id="nodeStatusPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span id="nodeStatusDot" class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </div>
+                    <span id="nodeStatusText" class="text-xs font-mono font-bold text-red-500 tracking-wider">BUSCANDO SEÑAL...</span>
+                </div>
             </section>
             
             <section class="space-y-4">
@@ -99,7 +105,7 @@
                     <p class="text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
                     <p id="fileName" class="text-[10px] mt-2 text-sar font-bold truncate max-w-full"></p>
                 </div>
-                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">ANALIZAR SEÑAL</button>
+                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">ANALIZAR SEÑAL</button>
             </section>
         </aside>
 
@@ -111,7 +117,7 @@
                 <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-20"><i class="ph ph-radar text-8xl animate-pulse"></i><p class="font-mono text-sm tracking-widest">SISTEMA LISTO</p></div>
                 <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" src="">
                 <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" controls autoplay loop muted></video>
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/90 dark:bg-bgdark/90 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-10"><div class="w-12 h-12 border-4 border-slate-300 border-t-sar rounded-full animate-spin"></div><p class="font-mono text-xs tracking-tighter">DESCODIFICANDO...</p></div>
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/90 dark:bg-bgdark/90 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-10"><div class="w-12 h-12 border-4 border-slate-300 border-t-sar rounded-full animate-spin"></div><p class="font-mono text-xs tracking-tighter">PROCESANDO...</p></div>
             </div>
             <button id="btnDownload" class="absolute bottom-12 right-12 p-4 bg-green-600 text-white rounded-full shadow-2xl hidden hover:scale-110 active:scale-95 transition-all z-20"><i class="ph-bold ph-download-simple text-2xl"></i></button>
         </section>
@@ -167,18 +173,59 @@
     </div>
 
     <script>
+        
+        const NGROK_URL = "https://groundable-unratable-macy.ngrok-free.dev";
+
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
+        let backendReady = false;
 
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
             btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
-            apiUrl: document.getElementById('apiUrl'), resultImage: document.getElementById('resultImage'),
-            resultVideo: document.getElementById('resultVideo'), loading: document.getElementById('loadingOverlay'),
-            placeholder: document.getElementById('placeholder'), btnStats: document.getElementById('btnOpenStats'),
-            statsModal: document.getElementById('statsModal'), btnCloseStats: document.getElementById('btnCloseStats'),
-            statsTable: document.getElementById('statsTableBody')
+            resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'), 
+            loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'), 
+            btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'), 
+            btnCloseStats: document.getElementById('btnCloseStats'), statsTable: document.getElementById('statsTableBody'),
+            nodeStatusBg: document.getElementById('nodeStatusBg'), nodeStatusDot: document.getElementById('nodeStatusDot'),
+            nodeStatusPing: document.getElementById('nodeStatusPing'), nodeStatusText: document.getElementById('nodeStatusText')
         };
+
+        // --- SISTEMA DE LATIDO (PING AL BACKEND) ---
+        async function checkBackend() {
+            try {
+                const response = await fetch(`${NGROK_URL}/`, { 
+                    method: 'GET',
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                
+                if (response.ok && !backendReady) {
+                    // Actualizar UI a conectado
+                    els.nodeStatusBg.className = "w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
+                    els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500";
+                    els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden"; // Quitamos el parpadeo
+                    els.nodeStatusText.className = "text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
+                    els.nodeStatusText.textContent = "ENLACE ESTABLECIDO";
+                    els.btnProcess.disabled = false;
+                    backendReady = true;
+                }
+            } catch (error) {
+                if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
+                    // Actualizar UI a desconectado
+                    els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
+                    els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+                    els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"; // Reactivamos el parpadeo
+                    els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
+                    els.nodeStatusText.textContent = "NODO APAGADO";
+                    els.btnProcess.disabled = true;
+                    backendReady = false;
+                }
+            }
+        }
+
+        // Comprobar servidor cada 5 segundos
+        setInterval(checkBackend, 5000);
+        checkBackend();
 
         // --- TEMA ---
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -191,7 +238,7 @@
             if (!els.statsModal.classList.contains('hidden')) loadStatsData();
         };
 
-        // --- RELOJ UTC (AÑADIDO) ---
+        // --- RELOJ UTC ---
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toISOString().split('T')[1].split('.')[0] + ' UTC';
@@ -207,8 +254,8 @@
 
         // --- PROCESAMIENTO ---
         els.btnProcess.onclick = async () => {
-            let url = els.apiUrl.value.trim().replace(/\/$/, "");
-            if (!url || !selectedFile) return alert("Configura la API y selecciona un archivo");
+            if (!backendReady) return alert("El Nodo GPU está apagado. Inicia el script en Google Colab primero.");
+            if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
 
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
             els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); els.placeholder.classList.add('hidden');
@@ -220,7 +267,7 @@
 
             const isVideo = selectedFile.type.startsWith('video');
             try {
-                const res = await fetch(`${url}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd });
+                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd });
                 if(!res.ok) throw new Error();
                 const blob = await res.blob();
                 const bUrl = URL.createObjectURL(blob);
@@ -233,7 +280,7 @@
                     const a = document.createElement('a'); a.href = bUrl; a.download = "sar_result_"+selectedFile.name; a.click();
                 };
             } catch (e) {
-                alert("Error de conexión"); els.placeholder.classList.remove('hidden');
+                alert("Error de conexión durante el escaneo."); els.placeholder.classList.remove('hidden');
             } finally { els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); }
         };
 
@@ -248,11 +295,10 @@
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
         async function loadStatsData() {
-            let baseUrl = els.apiUrl.value.trim().replace(/\/$/, "");
-            if (!baseUrl) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">API NO CONFIGURADA</td></tr>'; return; }
+            if (!backendReady) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">NODO C2 DESCONECTADO</td></tr>'; return; }
 
             try {
-                const response = await fetch(`${baseUrl}/estadisticas/`);
+                const response = await fetch(`${NGROK_URL}/estadisticas/`);
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
 
@@ -264,7 +310,7 @@
                     }
                 });
             } catch (error) { 
-                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">SIN DATOS DE TELEMETRÍA</td></tr>'; 
+                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; 
             }
         }
 
