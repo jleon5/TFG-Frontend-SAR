@@ -295,10 +295,20 @@
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
         async function loadStatsData() {
-            if (!backendReady) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">NODO C2 DESCONECTADO</td></tr>'; return; }
+            if (!backendReady) { 
+                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">NODO C2 DESCONECTADO</td></tr>'; 
+                return; 
+            }
 
             try {
-                const response = await fetch(`${NGROK_URL}/estadisticas/`);
+                // ARREGLO: Añadida la cabecera para saltar la pantalla de bloqueo de Ngrok
+                const response = await fetch(`${NGROK_URL}/estadisticas/`, {
+                    method: 'GET',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+                
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
 
@@ -310,6 +320,7 @@
                     }
                 });
             } catch (error) { 
+                console.error("Error al cargar telemetría:", error);
                 els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; 
             }
         }
