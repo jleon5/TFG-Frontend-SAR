@@ -73,6 +73,7 @@
                 <select id="modelSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none">
                     <option value="YOLO v12">YOLO v12 (Precisión)</option>
                     <option value="YOLO v8">YOLO v8 (Balanceado)</option>
+                    <option value="YOLO v5">YOLO v5 (Legacy)</option>
                 </select>
                 <div class="space-y-2">
                     <div class="flex justify-between text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
@@ -104,31 +105,34 @@
     <div id="statsModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div class="bg-white dark:bg-panel w-full max-w-6xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
             
-            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
                 <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200"><i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA</h2>
                 <button id="btnCloseStats" class="p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i class="ph ph-x text-2xl"></i></button>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark">
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark min-h-0">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
-                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center">Rendimiento (FPS) por Misión Video</h3>
-                        <canvas id="fpsChart" height="200"></canvas>
+                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+                        <h3 class="font-mono text-xs text-slate-500 mb-2 uppercase text-center shrink-0">Rendimiento (FPS) por Misión Video</h3>
+                        <div class="relative h-48 w-full"> <canvas id="fpsChart"></canvas>
+                        </div>
                     </div>
-                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h3 class="font-mono text-xs text-slate-500 mb-2 uppercase text-center">Carga Térmica CPU (%)</h3>
-                        <div class="text-center text-[10px] font-mono mb-2 text-slate-400">
+                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+                        <h3 class="font-mono text-xs text-slate-500 mb-1 uppercase text-center shrink-0">Carga Térmica CPU (%)</h3>
+                        <div class="text-center text-[10px] font-mono mb-2 text-slate-400 shrink-0">
                             <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
                             <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
                         </div>
-                        <canvas id="cpuChart" height="200"></canvas>
+                        <div class="relative h-44 w-full"> <canvas id="cpuChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
-                    <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center">Comparativa: Tiempo de Procesamiento Medio por Modelo (Segundos)</h3>
-                    <canvas id="modelChart" height="60"></canvas>
+                <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0 flex flex-col">
+                    <h3 class="font-mono text-xs text-slate-500 mb-2 uppercase text-center shrink-0">Comparativa: Tiempo de Procesamiento Medio por Modelo (Segundos)</h3>
+                    <div class="relative h-24 w-full"> <canvas id="modelChart"></canvas>
+                    </div>
                 </div>
 
                 <div class="bg-white dark:bg-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0">
