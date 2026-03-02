@@ -3,342 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TERMINAL SAR // C2</title>
+    <title>TERMINAL SAR // C2 PRO</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'], }, colors: { sar: { DEFAULT: '#ff5722', dark: '#d84315' }, panel: '#111827', bgdark: '#0b0f19' } } } }
-    </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-</head>
-<body class="bg-bgdark text-slate-300 h-screen flex flex-col overflow-hidden">
 
-    <header class="border-b border-gray-800 bg-panel px-6 py-4 flex justify-between items-center shadow-md">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        sar: { DEFAULT: '#ff5722', dark: '#d84315', glow: 'rgba(255, 87, 34, 0.5)' },
+                        panel: '#111827',
+                        bgdark: '#0b0f19'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Transición suave para el cambio de tema */
+        .transition-theme { transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+        
+        /* Ocultar barra de desplazamiento pero mantener funcionalidad */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-screen flex flex-col overflow-hidden transition-theme">
+
+    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-panel flex items-center justify-between px-6 shrink-0 z-50">
         <div class="flex items-center gap-3">
-            <i class="ph-fill ph-crosshair text-sar text-3xl animate-pulse"></i>
-            <h1 class="font-mono text-xl font-bold tracking-widest text-white">SISTEMA <span class="text-sar">SAR</span> C2</h1>
+            <div class="w-8 h-8 bg-sar rounded flex items-center justify-center shadow-lg shadow-sar/20">
+                <i class="ph-bold ph-broadcast text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-mono font-bold tracking-tighter text-lg leading-none">SAR AI SYSTEM</h1>
+                <span id="sysState" class="text-[10px] font-mono text-green-500 uppercase tracking-widest">SISTEMA EN LÍNEA</span>
+            </div>
         </div>
-        <div class="flex items-center gap-4 text-sm font-mono">
-            <div id="status-indicator" class="flex items-center gap-2 text-gray-500">
-                <div class="w-2 h-2 rounded-full bg-gray-500" id="status-dot"></div>
-                <span id="status-text">DESCONECTADO</span>
+
+        <div class="flex items-center gap-4">
+            <button id="themeToggle" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:scale-110 transition-all">
+                <i id="themeIcon" class="ph ph-moon-stars text-xl"></i>
+            </button>
+            <div class="h-8 w-[1px] bg-slate-200 dark:border-slate-800"></div>
+            <div class="text-right hidden sm:block">
+                <p class="text-[10px] font-mono opacity-50 uppercase">Operación Local</p>
+                <p id="clock" class="text-xs font-mono font-bold">00:00:00 UTC</p>
             </div>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
+    <main class="flex flex-1 overflow-hidden">
         
-        <aside class="w-80 bg-panel border-r border-gray-800 p-6 flex flex-col gap-6 overflow-y-auto">
-            <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Enlace de Datos</h3>
-                <input type="text" id="apiUrl" placeholder="https://...trycloudflare.com" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none font-mono">
-            </div>
-            <hr class="border-gray-800">
-            <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Parámetros IA</h3>
-                <label class="block text-sm mb-1 mt-3">Arquitectura</label>
-                <select id="modelSelect" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white focus:border-sar focus:outline-none">
-                    <option value="YOLO v12" selected>YOLO v12 (SARD)</option>
-                    <option value="YOLO v8">YOLO v8</option>
-                    <option value="YOLO v5">YOLO v5</option>
-                </select>
-                <label class="block text-sm mb-1 mt-4">Confianza: <span id="confVal" class="text-sar font-mono">0.35</span></label>
-                <input type="range" id="confSlider" min="0.1" max="1.0" step="0.05" value="0.35" class="w-full accent-sar">
-            </div>
-            <hr class="border-gray-800">
-            <div>
-                <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase tracking-wider">Telemetría (Imagen/Video)</h3>
-                <input type="file" id="mediaUpload" accept="video/*,image/*" class="hidden">
-                <label for="mediaUpload" class="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg p-6 hover:border-sar hover:bg-gray-800 transition-all">
-                    <i class="ph ph-upload-simple text-3xl mb-2 text-gray-400"></i>
-                    <span class="text-xs text-center break-all" id="fileName">Seleccionar archivo</span>
-                </label>
-            </div>
-            <button id="btnProcess" class="mt-auto w-full bg-transparent border border-sar text-sar font-mono font-bold py-3 rounded hover:bg-sar hover:text-white transition-all flex justify-center items-center gap-2">
-                <i class="ph-bold ph-radar"></i> INICIAR ESCANEO
-            </button>
+        <aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-panel p-6 flex flex-col gap-6 overflow-y-auto shrink-0 transition-theme">
+            
+            <section class="space-y-3">
+                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Enlace de Comunicación (API)</label>
+                <input type="text" id="apiUrl" 
+                    placeholder="https://xyz.trycloudflare.com"
+                    class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs font-mono outline-none focus:border-sar transition-all">
+            </section>
+
+            <section class="space-y-4">
+                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Configuración de IA</label>
+                
+                <div class="space-y-2">
+                    <p class="text-xs">Modelo Operativo</p>
+                    <select id="modelSelect" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none focus:border-sar">
+                        <option value="YOLO v12">YOLO v12 (Precision+)</option>
+                        <option value="YOLO v8">YOLO v8 (Balanced)</option>
+                        <option value="YOLO v5">YOLO v5 (Legacy)</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <p class="text-xs">Confianza</p>
+                        <span id="confValue" class="text-xs font-mono text-sar">0.35</span>
+                    </div>
+                    <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35"
+                        class="w-full accent-sar h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </section>
+
+            <section class="flex-1 flex flex-col gap-4">
+                <label class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">Entrada de Datos</label>
+                
+                <div id="dropZone" class="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-4 hover:border-sar/50 transition-colors cursor-pointer group">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
+                    <i class="ph ph-cloud-arrow-up text-4xl mb-2 text-slate-400 group-hover:text-sar group-hover:scale-110 transition-all"></i>
+                    <p class="text-[10px] text-center uppercase font-mono text-slate-500">Arrastra archivos o haz clic aquí</p>
+                    <p id="fileName" class="text-[10px] mt-2 text-sar font-bold truncate max-w-full"></p>
+                </div>
+
+                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg shadow-sar/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    INICIAR ANÁLISIS
+                </button>
+            </section>
+
         </aside>
 
-        <main class="flex-1 bg-bgdark p-6 relative flex flex-col overflow-y-auto">
+        <section class="flex-1 p-8 flex items-center justify-center relative bg-slate-50 dark:bg-bgdark transition-theme overflow-auto">
             
-            <div class="flex gap-4 border-b border-gray-800 mb-6 font-mono text-sm shrink-0">
-                <button id="tab-scanner" class="px-4 py-2 border-b-2 border-sar text-sar font-bold">ESCÁNER ACTIVO</button>
-                <button id="tab-stats" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-white">INTELIGENCIA (STATS)</button>
-            </div>
-
-            <div id="view-scanner" class="flex-1 flex flex-col">
-                <div class="flex justify-between items-end mb-4">
-                    <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-monitor"></i> FEED DE RESULTADOS</h2>
-                    <div class="bg-panel border border-gray-800 px-4 py-2 rounded font-mono text-sm">
-                        <span class="text-gray-500">ESTADO:</span> <span id="sysState" class="text-green-500">STANDBY</span>
-                    </div>
-                </div>
-
-                <div class="flex-1 bg-black border border-gray-800 rounded-lg relative overflow-hidden flex items-center justify-center shadow-lg group min-h-[400px]">
-                    <div id="loadingOverlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center backdrop-blur-sm">
-                        <i class="ph ph-spinner-gap animate-spin text-sar text-6xl mb-4"></i>
-                        <p class="font-mono text-sar tracking-widest animate-pulse">TRANSMITIENDO AL NODO GPU...</p>
-                    </div>
-
-                    <video id="resultVideo" class="max-w-full max-h-full hidden" controls autoplay muted loop></video>
-                    <img id="resultImage" class="max-w-full max-h-full hidden object-contain">
-                    
-                    <div id="placeholder" class="text-center text-gray-600 font-mono">
-                        <i class="ph ph-camera text-6xl mb-3 opacity-50"></i>
-                        <p>ESPERANDO ENTRADA DE DATOS</p>
-                    </div>
-
-                    <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-gray-700 m-4 pointer-events-none"></div>
-                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-gray-700 m-4 pointer-events-none"></div>
-                </div>
-            </div>
-
-            <div id="view-stats" class="hidden flex-col gap-6 pb-10">
-                <div class="flex justify-between items-center bg-panel p-4 rounded border border-gray-800 shrink-0">
-                    <h2 class="font-mono font-bold text-gray-400 tracking-widest"><i class="ph ph-chart-line-up"></i> TELEMETRÍA DE SERVIDOR</h2>
-                    <button id="btnLoadStats" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded font-mono text-sm border border-gray-600 transition-colors">
-                        <i class="ph ph-arrows-clockwise"></i> ACTUALIZAR DATOS
-                    </button>
-                </div>
+            <div id="resultContainer" class="relative max-w-full max-h-full flex items-center justify-center rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-500 min-h-[400px] min-w-[300px]">
                 
-                <div class="grid grid-cols-2 gap-6 shrink-0">
-                    <div class="bg-panel p-4 rounded border border-gray-800">
-                        <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Rendimiento (FPS) por Misión Video</h3>
-                        <canvas id="fpsChart" height="200"></canvas>
-                    </div>
-                    <div class="bg-panel p-4 rounded border border-gray-800">
-                        <h3 class="font-mono text-xs text-gray-500 mb-2 uppercase text-center">Carga Térmica CPU (%)</h3>
-                        <div class="text-center text-[10px] font-mono mb-2 text-gray-400">
-                            <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
-                            <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
-                        </div>
-                        <canvas id="cpuChart" height="200"></canvas>
-                    </div>
+                <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-30">
+                    <i class="ph ph-scan-eye text-8xl"></i>
+                    <p class="font-mono text-sm tracking-[0.2em]">SIN SEÑAL DE VÍDEO</p>
                 </div>
 
-                <div class="bg-panel p-4 rounded border border-gray-800 shrink-0">
-                    <h3 class="font-mono text-xs text-gray-500 mb-4 uppercase text-center">Comparativa: Tiempo de Procesamiento por Modelo (Segundos)</h3>
-                    <canvas id="modelChart" height="80"></canvas>
-                </div>
+                <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain" src="" alt="Resultado">
+                <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain" controls autoplay loop muted></video>
 
-                <div class="bg-panel rounded border border-gray-800 shrink-0 overflow-hidden">
-                    <div class="bg-gray-900 p-3 border-b border-gray-800">
-                        <h3 class="font-mono text-xs text-gray-400 uppercase tracking-widest"><i class="ph ph-database"></i> Historial Completo de Operaciones</h3>
-                    </div>
-                    <div class="overflow-x-auto max-h-64">
-                        <table class="w-full text-left text-sm font-mono whitespace-nowrap">
-                            <thead class="text-gray-500 bg-gray-800/50 sticky top-0">
-                                <tr>
-                                    <th class="p-3 font-normal">Fecha y Hora</th>
-                                    <th class="p-3 font-normal">Operación</th>
-                                    <th class="p-3 font-normal">Red Neuronal</th>
-                                    <th class="p-3 font-normal">FPS</th>
-                                    <th class="p-3 font-normal">Latencia</th>
-                                    <th class="p-3 font-normal">CPU</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historyTableBody" class="text-gray-300 divide-y divide-gray-800/50">
-                                </tbody>
-                        </table>
-                    </div>
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/80 dark:bg-bgdark/80 hidden items-center justify-center flex-col gap-4 backdrop-blur-sm z-10">
+                    <div class="w-12 h-12 border-4 border-slate-300 border-t-sar rounded-full animate-spin"></div>
+                    <p class="font-mono text-xs animate-pulse">PROCESANDO FRAME POR FRAME...</p>
                 </div>
             </div>
 
-        </main>
-    </div>
+            <button id="btnDownload" class="absolute bottom-12 right-12 p-4 bg-green-600 text-white rounded-full shadow-xl hidden hover:scale-110 transition-all active:scale-95">
+                <i class="ph-bold ph-download-simple text-2xl"></i>
+            </button>
+        </section>
+
+    </main>
 
     <script>
-        const apiUrlInput = document.getElementById('apiUrl');
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const confSlider = document.getElementById('confSlider');
-        const confVal = document.getElementById('confVal');
-        const mediaUpload = document.getElementById('mediaUpload');
-        const fileNameDisplay = document.getElementById('fileName');
-        const btnProcess = document.getElementById('btnProcess');
-        const modelSelect = document.getElementById('modelSelect');
+        // --- ELEMENTOS ---
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const htmlElement = document.documentElement;
         
-        const resultVideo = document.getElementById('resultVideo');
+        const btnProcess = document.getElementById('btnProcess');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
         const resultImage = document.getElementById('resultImage');
+        const resultVideo = document.getElementById('resultVideo');
         const placeholder = document.getElementById('placeholder');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const apiUrlInput = document.getElementById('apiUrl');
         const sysState = document.getElementById('sysState');
 
-        // Pestañas
-        const tabScanner = document.getElementById('tab-scanner');
-        const tabStats = document.getElementById('tab-stats');
-        const viewScanner = document.getElementById('view-scanner');
-        const viewStats = document.getElementById('view-stats');
+        // --- MODO OSCURO / CLARO ---
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+            themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
+        }
 
+        themeToggle.addEventListener('click', () => {
+            if (htmlElement.classList.contains('dark')) {
+                htmlElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                themeIcon.classList.replace('ph-sun', 'ph-moon-stars');
+            } else {
+                htmlElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
+            }
+        });
+
+        // --- RELOJ ---
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toISOString().split('T')[1].split('.')[0] + ' UTC';
+        }, 1000);
+
+        // --- MANEJO DE ARCHIVOS ---
         let selectedFile = null;
-        let fpsChartObj = null;
-        let cpuChartObj = null;
-        let modelChartObj = null;
 
-        // --- NAVEGACIÓN DE PESTAÑAS ---
-        tabScanner.addEventListener('click', () => {
-            viewScanner.classList.remove('hidden'); viewScanner.classList.add('flex');
-            viewStats.classList.add('hidden'); viewStats.classList.remove('flex');
-            tabScanner.classList.replace('border-transparent', 'border-sar'); tabScanner.classList.replace('text-gray-500', 'text-sar');
-            tabStats.classList.replace('border-sar', 'border-transparent'); tabStats.classList.replace('text-sar', 'text-gray-500');
-        });
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            selectedFile = e.target.files[0];
+            if(selectedFile) document.getElementById('fileName').textContent = selectedFile.name;
+        };
 
-        tabStats.addEventListener('click', () => {
-            viewStats.classList.remove('hidden'); viewStats.classList.add('flex');
-            viewScanner.classList.add('hidden'); viewScanner.classList.remove('flex');
-            tabStats.classList.replace('border-transparent', 'border-sar'); tabStats.classList.replace('text-gray-500', 'text-sar');
-            tabScanner.classList.replace('border-sar', 'border-transparent'); tabScanner.classList.replace('text-sar', 'text-gray-500');
-            loadStats(); 
-        });
-
-        // --- INTERFAZ BÁSICA ---
-        confSlider.addEventListener('input', (e) => confVal.textContent = parseFloat(e.target.value).toFixed(2));
-        
-        apiUrlInput.addEventListener('input', () => {
-            if (apiUrlInput.value.includes('trycloudflare.com')) {
-                statusDot.classList.replace('bg-gray-500', 'bg-green-500');
-                statusText.textContent = "ENLACE ESTABLECIDO"; statusText.classList.replace('text-gray-500', 'text-green-500');
-            }
-        });
-
-        mediaUpload.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
-                fileNameDisplay.textContent = selectedFile.name;
-                fileNameDisplay.classList.add('text-white');
-            }
-        });
-
-        // --- LÓGICA DE INFERENCIA ---
+        // --- LOGICA DE PROCESAMIENTO ---
         btnProcess.addEventListener('click', async () => {
-            let baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
-            if (!baseUrl || !selectedFile) return alert("Falta configurar la URL o subir un archivo.");
-
-            loadingOverlay.classList.remove('hidden'); loadingOverlay.classList.add('flex');
-            sysState.textContent = "PROCESANDO (GPU)"; sysState.className = "text-yellow-500";
+            let baseUrl = apiUrlInput.value.trim();
+            if (!baseUrl) return alert("Por favor, introduce la URL de Cloudflare");
+            if (!selectedFile) return alert("Selecciona una imagen o vídeo primero");
             
-            resultVideo.classList.add('hidden'); resultImage.classList.add('hidden'); placeholder.classList.add('hidden');
+            // Limpieza de URL
+            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
 
-            const isVideo = selectedFile.type.startsWith('video/');
-            const endpoint = isVideo ? '/analizar_video/' : '/analizar_imagen/';
-            
+            // UI State
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            placeholder.classList.add('hidden');
+            resultImage.classList.add('hidden');
+            resultVideo.classList.add('hidden');
+            sysState.textContent = "ANALIZANDO...";
+            sysState.className = "text-[10px] font-mono text-sar animate-pulse";
+
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('modelo', modelSelect.value);
-            formData.append('conf', confSlider.value);
+            formData.append('modelo', document.getElementById('modelSelect').value);
+            formData.append('conf', document.getElementById('confSlider').value);
+
+            const isVideo = selectedFile.type.startsWith('video');
+            const endpoint = isVideo ? '/analizar_video/' : '/analizar_imagen/';
 
             try {
-                const response = await fetch(`${baseUrl}${endpoint}`, { method: 'POST', body: formData });
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                const response = await fetch(`${baseUrl}${endpoint}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("Fallo en el servidor");
 
                 const blob = await response.blob();
-                const fileUrl = URL.createObjectURL(blob);
+                const url = URL.createObjectURL(blob);
 
                 if (isVideo) {
-                    resultVideo.src = fileUrl; resultVideo.classList.remove('hidden');
+                    resultVideo.src = url;
+                    resultVideo.classList.remove('hidden');
                 } else {
-                    resultImage.src = fileUrl; resultImage.classList.remove('hidden');
+                    resultImage.src = url;
+                    resultImage.classList.remove('hidden');
                 }
+
+                sysState.textContent = "ANÁLISIS COMPLETADO";
+                sysState.className = "text-[10px] font-mono text-green-500";
                 
-                sysState.textContent = "COMPLETADO"; sysState.className = "text-green-500";
-            } catch (error) {
-                console.error(error); alert("Fallo en la comunicación con la IA.");
-                sysState.textContent = "ERROR TÁCTICO"; sysState.className = "text-red-500";
+                // Activar descarga
+                const btnDl = document.getElementById('btnDownload');
+                btnDl.classList.remove('hidden');
+                btnDl.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `sar_detect_${selectedFile.name}`;
+                    a.click();
+                };
+
+            } catch (err) {
+                console.error(err);
+                alert("Error de comunicación. Comprueba el túnel de Cloudflare y el CORS.");
+                sysState.textContent = "ERROR DE CONEXIÓN";
+                sysState.className = "text-[10px] font-mono text-red-500";
                 placeholder.classList.remove('hidden');
             } finally {
-                loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex');
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
             }
         });
 
-        // --- LÓGICA DE ESTADÍSTICAS ---
-        document.getElementById('btnLoadStats').addEventListener('click', loadStats);
-
-        async function loadStats() {
-            let baseUrl = apiUrlInput.value.trim().replace(/\/$/, "");
-            if (!baseUrl) return;
-
-            try {
-                const response = await fetch(`${baseUrl}/estadisticas/`);
-                if (!response.ok) return;
-                const csvText = await response.text();
-
-                Papa.parse(csvText, {
-                    header: true, dynamicTyping: true, skipEmptyLines: true,
-                    complete: function(results) { renderCharts(results.data); }
-                });
-            } catch (error) { console.log("Aún no hay estadísticas o fallo la red."); }
-        }
-
-        function renderCharts(data) {
-            // Destruir gráficas previas
-            if(fpsChartObj) fpsChartObj.destroy();
-            if(cpuChartObj) cpuChartObj.destroy();
-            if(modelChartObj) modelChartObj.destroy();
-
-            Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = "'JetBrains Mono', monospace";
-
-            // 1. Gráfica FPS (Solo Video)
-            const videoData = data.filter(d => d.Tipo === 'VIDEO');
-            const fpsLabels = videoData.map((_, i) => `Vis #${i+1}`);
-            const fpsData = videoData.map(d => d.FPS_Promedio);
-
-            fpsChartObj = new Chart(document.getElementById('fpsChart'), {
-                type: 'line',
-                data: { labels: fpsLabels, datasets: [{ label: 'FPS', data: fpsData, borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
-            });
-
-            // 2. Gráfica CPU con Colores Diferenciados
-            const cpuLabels = data.map((_, i) => `Op #${i+1}`);
-            const cpuData = data.map(d => d.CPU_Usage);
-            const cpuColors = data.map(d => d.Tipo === 'VIDEO' ? 'rgba(255, 87, 34, 0.9)' : 'rgba(59, 130, 246, 0.9)');
-
-            cpuChartObj = new Chart(document.getElementById('cpuChart'), {
-                type: 'bar',
-                data: { labels: cpuLabels, datasets: [{ label: '% Uso CPU', data: cpuData, backgroundColor: cpuColors }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#1f2937' } }, x: { grid: { color: '#1f2937' } } } }
-            });
-
-            // 3. Gráfica Comparativa de Modelos
-            const modelosUnicos = [...new Set(data.map(d => d.Modelo))];
-            const avgTimePerModel = modelosUnicos.map(modelo => {
-                const records = data.filter(d => d.Modelo === modelo);
-                const sum = records.reduce((acc, curr) => acc + curr.Duracion_Sec, 0);
-                return (sum / records.length).toFixed(2);
-            });
-
-            modelChartObj = new Chart(document.getElementById('modelChart'), {
-                type: 'bar',
-                data: { labels: modelosUnicos, datasets: [{ label: 'Latencia Media (s)', data: avgTimePerModel, backgroundColor: 'rgba(16, 185, 129, 0.8)' }] },
-                options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#1f2937' } }, y: { grid: { display: false } } } }
-            });
-
-            // 4. Llenar Tabla Histórico (Orden Inverso, del más nuevo al más viejo)
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
-            
-            [...data].reverse().forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-800/50 transition-colors";
-                
-                // Formatear colores
-                const tipoColor = row.Tipo === 'VIDEO' ? 'text-sar' : 'text-blue-500';
-                const fpsText = row.Tipo === 'VIDEO' ? `${row.FPS_Promedio} fps` : '-';
-
-                tr.innerHTML = `
-                    <td class="p-3">${row.Fecha} <span class="text-gray-500">${row.Hora}</span></td>
-                    <td class="p-3 font-bold ${tipoColor}">${row.Tipo}</td>
-                    <td class="p-3 text-emerald-400">${row.Modelo}</td>
-                    <td class="p-3">${fpsText}</td>
-                    <td class="p-3">${row.Duracion_Sec.toFixed(2)}s</td>
-                    <td class="p-3">${row.CPU_Usage}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+        // Slider sync
+        document.getElementById('confSlider').addEventListener('input', (e) => {
+            document.getElementById('confValue').textContent = e.target.value;
+        });
     </script>
 </body>
 </html>
