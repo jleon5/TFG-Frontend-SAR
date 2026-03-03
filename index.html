@@ -45,7 +45,7 @@
     
     <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-50 transition-theme">
         <div class="flex items-center gap-3">
-            <i class="ph ph-crosshair text-sar text-3xl animate-pulse drop-shadow-[0_0_8px_rgba(255,87,34,0.8)]"></i>
+            <i class="ph-bold ph-broadcast text-white text-xl"></i>
             <h1 class="font-mono font-bold tracking-tighter text-lg leading-none">SAR AI SYSTEM <span class="text-sar text-[10px] ml-2 opacity-50">V2.0</span></h1>
         </div>
         
@@ -122,10 +122,6 @@
             </div>
 
             <div id="actionButtons" class="absolute bottom-12 right-12 flex gap-4 hidden z-20">
-                <button id="btnViewPDF" class="p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative">
-                    <i class="ph-bold ph-eye text-2xl"></i>
-                    <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER INFORME</span>
-                </button>
                 <button id="btnDownloadPDF" class="p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative">
                     <i class="ph-bold ph-file-pdf text-2xl"></i>
                     <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">DESCARGAR INFORME</span>
@@ -193,7 +189,6 @@
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
         let backendReady = false;
-        let progressInterval = null;
 
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
@@ -206,8 +201,7 @@
             nodeStatusPing: document.getElementById('nodeStatusPing'), nodeStatusText: document.getElementById('nodeStatusText'),
             progressBar: document.getElementById('progressBar'), progressPercent: document.getElementById('progressPercent'),
             progressText: document.getElementById('progressText'), actionButtons: document.getElementById('actionButtons'),
-            btnDownloadVideo: document.getElementById('btnDownloadVideo'), btnDownloadPDF: document.getElementById('btnDownloadPDF'),
-            btnViewPDF: document.getElementById('btnViewPDF') // Agregado botón visualizar
+            btnDownloadVideo: document.getElementById('btnDownloadVideo'), btnDownloadPDF: document.getElementById('btnDownloadPDF')
         };
 
         // --- SISTEMA DE LATIDO (PING AL BACKEND) ---
@@ -260,11 +254,47 @@
         };
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
 
-        // --- PROCESAMIENTO CON BARRA DE PROGRESO ---
+
+        // --- LISTENER REACTIVO (STREAMING DE PROGRESO) ---
+        async function listenToProgressStream() {
+            try {
+                const response = await fetch(`${NGROK_URL}/stream_progreso/`, { 
+                    headers: { 'ngrok-skip-browser-warning': 'true' } 
+                });
+                
+                // Lee el stream fragmento a fragmento en tiempo real
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break; // Fin del stream
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    // Cada fragmento puede traer uno o más JSONs separados por salto de línea
+                    const lines = chunk.split('\n').filter(line => line.trim() !== '');
+                    
+                    for (const line of lines) {
+                        try {
+                            const estado = JSON.parse(line);
+                            els.progressBar.style.width = `${estado.progreso}%`;
+                            els.progressPercent.textContent = `${estado.progreso}%`;
+                            els.progressText.textContent = estado.fase;
+                        } catch(e) { } // Silenciamos errores de parseo por fragmentos incompletos
+                    }
+                }
+            } catch (error) {
+                console.warn("Canal de telemetría cerrado o interrumpido.");
+            }
+        }
+
+
+        // --- PROCESAMIENTO PRINCIPAL ---
         els.btnProcess.onclick = async () => {
             if (!backendReady) return alert("El Nodo GPU está apagado. Inicia el script en Google Colab primero.");
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
 
+            // Preparar UI para la carga
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
             els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
             els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
@@ -273,18 +303,8 @@
             els.progressPercent.textContent = "0%";
             els.progressText.textContent = "INICIALIZANDO NODO...";
 
-            progressInterval = setInterval(async () => {
-                try {
-                    const pRes = await fetch(`${NGROK_URL}/progreso/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-                    if (pRes.ok) {
-                        const estado = await pRes.json();
-                        els.progressBar.style.width = `${estado.progreso}%`;
-                        els.progressPercent.textContent = `${estado.progreso}%`;
-                        // Muestra automáticamente los estados: "INFERENCIA...", "ENSAMBLANDO INFORME PDF", etc.
-                        els.progressText.textContent = estado.fase; 
-                    }
-                } catch (e) { console.warn("Fallo temporal al consultar progreso."); }
-            }, 1000);
+            // Arrancar el Listener (SIN usar await para que se ejecute en paralelo)
+            listenToProgressStream();
 
             const fd = new FormData();
             fd.append('file', selectedFile);
@@ -293,22 +313,25 @@
 
             const isVideo = selectedFile.type.startsWith('video');
             try {
-                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
+                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { 
+                    method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } 
+                });
                 if(!res.ok) throw new Error();
                 
                 const blob = await res.blob();
                 const bUrl = URL.createObjectURL(blob);
 
+                // Mostrar resultados
                 if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
                 else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
                 
+                // Configurar Botones de Descarga y mostrarlos
                 els.actionButtons.classList.remove('hidden');
                 
                 els.btnDownloadVideo.onclick = () => {
                     const a = document.createElement('a'); a.href = bUrl; a.download = "SAR_Feed_" + selectedFile.name; a.click();
                 };
                 
-                // NUEVA LÓGICA: Descargar PDF bypasseando Ngrok
                 els.btnDownloadPDF.onclick = async () => {
                     try {
                         const response = await fetch(`${NGROK_URL}/descargar_informe/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
@@ -319,21 +342,10 @@
                     } catch (e) { alert("Error al descargar informe."); }
                 };
 
-                // NUEVA LÓGICA: Ver PDF bypasseando Ngrok
-                els.btnViewPDF.onclick = async () => {
-                    try {
-                        const response = await fetch(`${NGROK_URL}/descargar_informe/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-                        if (!response.ok) throw new Error();
-                        const pdfBlob = await response.blob();
-                        const fileUrl = URL.createObjectURL(pdfBlob);
-                        window.open(fileUrl, '_blank');
-                    } catch (e) { alert("Error al abrir informe."); }
-                };
-
             } catch (e) {
                 alert("Error crítico durante el análisis del feed."); els.placeholder.classList.remove('hidden');
             } finally { 
-                clearInterval(progressInterval);
+                // Esconder la pantalla de carga al terminar
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
             }
         };
