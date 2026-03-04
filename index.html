@@ -192,7 +192,10 @@
 
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
+        
+        // Variables de estado de red
         let backendReady = false;
+        let pingInterval = null;
 
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
@@ -206,35 +209,63 @@
             progressBar: document.getElementById('progressBar'), progressPercent: document.getElementById('progressPercent'),
             progressText: document.getElementById('progressText'), actionButtons: document.getElementById('actionButtons'),
             btnDownloadVideo: document.getElementById('btnDownloadVideo'), btnDownloadPDF: document.getElementById('btnDownloadPDF'),
-            btnViewPDF: document.getElementById('btnViewPDF') // Agregado botón visualizar
+            btnViewPDF: document.getElementById('btnViewPDF')
         };
 
-        // --- SISTEMA DE LATIDO (PING AL BACKEND) ---
+        // --- SISTEMA DE LATIDO INTELIGENTE (SMART POLLING) ---
+        function setBackendDisconnected() {
+            if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
+                els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
+                els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+                els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
+                els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
+                els.nodeStatusText.textContent = "NODO APAGADO";
+                els.btnProcess.disabled = true;
+                backendReady = false;
+            }
+            // Reactivamos el ping para saber cuándo vuelve
+            startPing();
+        }
+
+        function startPing() {
+            if (!pingInterval) {
+                pingInterval = setInterval(checkBackend, 5000);
+            }
+        }
+
+        function stopPing() {
+            if (pingInterval) {
+                clearInterval(pingInterval);
+                pingInterval = null;
+            }
+        }
+
         async function checkBackend() {
             try {
                 const response = await fetch(`${NGROK_URL}/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-                if (response.ok && !backendReady) {
-                    els.nodeStatusBg.className = "w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
-                    els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500";
-                    els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden";
-                    els.nodeStatusText.className = "text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
-                    els.nodeStatusText.textContent = "ENLACE ESTABLECIDO";
-                    els.btnProcess.disabled = false;
-                    backendReady = true;
+                if (response.ok) {
+                    if (!backendReady) {
+                        els.nodeStatusBg.className = "w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
+                        els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500";
+                        els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden";
+                        els.nodeStatusText.className = "text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
+                        els.nodeStatusText.textContent = "ENLACE ESTABLECIDO";
+                        els.btnProcess.disabled = false;
+                        backendReady = true;
+                    }
+                    // Backend encontrado: SILENCIAMOS LA RED
+                    stopPing();
+                } else {
+                    setBackendDisconnected();
                 }
             } catch (error) {
-                if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
-                    els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
-                    els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
-                    els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
-                    els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
-                    els.nodeStatusText.textContent = "NODO APAGADO";
-                    els.btnProcess.disabled = true;
-                    backendReady = false;
-                }
+                setBackendDisconnected();
             }
         }
-        setInterval(checkBackend, 5000); checkBackend();
+        
+        // Disparo inicial
+        startPing();
+        checkBackend();
 
         // --- TEMA ---
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -266,16 +297,14 @@
                     headers: { 'ngrok-skip-browser-warning': 'true' } 
                 });
                 
-                // Lee el stream fragmento a fragmento en tiempo real
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
 
                 while (true) {
                     const { value, done } = await reader.read();
-                    if (done) break; // Fin del stream
+                    if (done) break;
                     
                     const chunk = decoder.decode(value, { stream: true });
-                    // Cada fragmento puede traer uno o más JSONs separados por salto de línea
                     const lines = chunk.split('\n').filter(line => line.trim() !== '');
                     
                     for (const line of lines) {
@@ -284,11 +313,13 @@
                             els.progressBar.style.width = `${estado.progreso}%`;
                             els.progressPercent.textContent = `${estado.progreso}%`;
                             els.progressText.textContent = estado.fase;
-                        } catch(e) { } // Silenciamos errores de parseo por fragmentos incompletos
+                        } catch(e) { } 
                     }
                 }
             } catch (error) {
                 console.warn("Canal de telemetría cerrado o interrumpido.");
+                // Si el streaming falla por caída de servidor, reactivamos el radar visual
+                setBackendDisconnected();
             }
         }
 
@@ -297,7 +328,6 @@
             if (!backendReady) return alert("El Nodo GPU está apagado. Inicia el script en Google Colab primero.");
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
 
-            // Preparar UI para la carga
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
             els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
             els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
@@ -306,7 +336,6 @@
             els.progressPercent.textContent = "0%";
             els.progressText.textContent = "INICIALIZANDO NODO...";
 
-            // Arrancar el Listener (SIN usar await para que se ejecute en paralelo)
             listenToProgressStream();
 
             const fd = new FormData();
@@ -324,11 +353,9 @@
                 const blob = await res.blob();
                 const bUrl = URL.createObjectURL(blob);
 
-                // Mostrar resultados
                 if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
                 else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
                 
-                // Configurar Botones de Descarga y mostrarlos
                 els.actionButtons.classList.remove('hidden');
                 
                 els.btnDownloadVideo.onclick = () => {
@@ -342,10 +369,12 @@
                         const pdfBlob = await response.blob();
                         const fileUrl = URL.createObjectURL(pdfBlob);
                         const a = document.createElement('a'); a.href = fileUrl; a.download = "SAR_Reporte_Tactico.pdf"; a.click();
-                    } catch (e) { alert("Error al descargar informe."); }
+                    } catch (e) { 
+                        alert("Error al descargar informe."); 
+                        setBackendDisconnected();
+                    }
                 };
 
-                // LÓGICA: Ver PDF bypasseando Ngrok
                 els.btnViewPDF.onclick = async () => {
                     try {
                         const response = await fetch(`${NGROK_URL}/descargar_informe/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
@@ -353,13 +382,18 @@
                         const pdfBlob = await response.blob();
                         const fileUrl = URL.createObjectURL(pdfBlob);
                         window.open(fileUrl, '_blank');
-                    } catch (e) { alert("Error al abrir informe."); }
+                    } catch (e) { 
+                        alert("Error al abrir informe."); 
+                        setBackendDisconnected();
+                    }
                 };
 
             } catch (e) {
-                alert("Error crítico durante el análisis del feed."); els.placeholder.classList.remove('hidden');
+                alert("Error crítico durante el análisis del feed."); 
+                els.placeholder.classList.remove('hidden');
+                // Si la inferencia falla por desconexión, encendemos el ping rojo
+                setBackendDisconnected();
             } finally { 
-                // Esconder la pantalla de carga al terminar
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
             }
         };
@@ -375,7 +409,11 @@
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { renderTable(results.data); renderCharts(results.data); } });
-            } catch (error) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; }
+            } catch (error) { 
+                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; 
+                // Si pedir estadísticas falla, el nodo ha caído
+                setBackendDisconnected();
+            }
         }
 
         function renderTable(data) {
