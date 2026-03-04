@@ -281,15 +281,85 @@
         // --- RELOJ UTC ---
         setInterval(() => document.getElementById('clock').textContent = new Date().toISOString().split('T')[1].split('.')[0] + ' UTC', 1000);
 
-        // --- ARCHIVOS ---
+        // --- ARCHIVOS Y DRAG & DROP ---
         let selectedFile = null;
-        document.getElementById('dropZone').onclick = () => els.fileInput.click();
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('fileName');
+
+        // 1. Clic tradicional para abrir explorador
+        dropZone.onclick = () => els.fileInput.click();
+        
         els.fileInput.onchange = (e) => {
             selectedFile = e.target.files[0];
-            if(selectedFile) document.getElementById('fileName').textContent = selectedFile.name;
+            if(selectedFile) fileNameDisplay.textContent = selectedFile.name;
         };
+        
+        // Slider de confianza
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
 
+        // --- LÓGICA DE DRAG & DROP ---
+        
+        // Evitar que el navegador abra la imagen por defecto en pantalla completa
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Efectos visuales de arrastre (Iluminar recuadro)
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('!border-sar', 'bg-sar/20');
+            }, false);
+        });
+
+        // Apagar iluminación al salir o soltar
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('!border-sar', 'bg-sar/20');
+            }, false);
+        });
+
+        // Manejar el archivo soltado (Drop)
+        dropZone.addEventListener('drop', async (e) => {
+            const dt = e.dataTransfer;
+
+            // 1er Intento: Archivos locales arrastrados desde el sistema operativo
+            if (dt.files && dt.files.length > 0) {
+                selectedFile = dt.files[0];
+                fileNameDisplay.textContent = selectedFile.name;
+                return;
+            }
+
+            // 2do Intento: Imágenes arrastradas desde otra pestaña web (Lectura de URL)
+            const url = dt.getData('text/uri-list') || dt.getData('text/plain');
+            if (url) {
+                fileNameDisplay.textContent = "Importando imagen web...";
+                try {
+                    // Hacer un "fetch" para descargar la imagen en segundo plano
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    
+                    // Extraer el nombre de la URL o asignar uno táctico
+                    let filename = url.split('/').pop().split('?')[0];
+                    if (!filename || !filename.includes('.')) filename = 'INTEL_WEB_IMPORT.jpg';
+                    
+                    // Convertir el Blob descargado en un Archivo válido para nuestro Backend
+                    selectedFile = new File([blob], filename, { type: blob.type });
+                    fileNameDisplay.textContent = selectedFile.name;
+                    
+                } catch (error) {
+                    console.error("Bloqueo CORS interceptado:", error);
+                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor de origen bloquea la extracción directa de esta imagen. Guárdala en tu equipo local y arrástrala de nuevo.");
+                    fileNameDisplay.textContent = "Error al importar";
+                }
+            }
+        }, false);
+        
         // --- LISTENER REACTIVO (STREAMING DE PROGRESO) ---
         async function listenToProgressStream() {
             try {
