@@ -11,6 +11,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -80,6 +81,7 @@
             <section class="space-y-4">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Configuración</label>
                 <select id="modelSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none">
+                    <option value="YOLO26-LOCAL" class="text-sar font-bold">YOLO26 (LOCAL EDGE) - OFFGRID</option>
                     <option value="YOLO v12">YOLO v12 (Precisión)</option>
                     <option value="YOLO v8">YOLO v8 (Balanceado)</option>
                     <option value="YOLO v5">YOLO v5 (Legacy)</option>
@@ -110,6 +112,7 @@
                 <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-20"><i class="ph ph-radar text-8xl animate-pulse"></i><p class="font-mono text-sm tracking-widest">SISTEMA LISTO</p></div>
                 <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" src="">
                 <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" controls autoplay loop muted></video>
+                <canvas id="canvasSalida" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50"></canvas>
                 
                 <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-10">
                     <i class="ph ph-radar text-6xl text-sar animate-spin mb-2"></i>
@@ -198,10 +201,15 @@
         let backendReady = false;
         let pingInterval = null;
 
+        // Variables Motor Edge (YOLO26 Local)
+        let stopVideoProcessing = false;
+        let sessionOrt = null;
+
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
             btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
             resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'), 
+            canvasSalida: document.getElementById('canvasSalida'), // Nuevo elemento canvas
             loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'), 
             btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'), 
             btnCloseStats: document.getElementById('btnCloseStats'), statsTable: document.getElementById('statsTableBody'),
@@ -221,10 +229,9 @@
                 els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
                 els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
                 els.nodeStatusText.textContent = "NODO APAGADO";
-                els.btnProcess.disabled = true;
+                // Ya NO deshabilitamos el botón, porque ahora podemos usar el motor local offgrid.
                 backendReady = false;
             }
-            // Reactivamos el ping para saber cuándo vuelve
             startPing();
         }
 
@@ -251,10 +258,8 @@
                         els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden";
                         els.nodeStatusText.className = "text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
                         els.nodeStatusText.textContent = "ENLACE ESTABLECIDO";
-                        els.btnProcess.disabled = false;
                         backendReady = true;
                     }
-                    // Backend encontrado: SILENCIAMOS LA RED
                     stopPing();
                 } else {
                     setBackendDisconnected();
@@ -264,7 +269,6 @@
             }
         }
         
-        // Disparo inicial
         startPing();
         checkBackend();
 
@@ -287,20 +291,18 @@
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileName');
 
-        // 1. Clic tradicional para abrir explorador
         dropZone.onclick = () => els.fileInput.click();
         
         els.fileInput.onchange = (e) => {
             selectedFile = e.target.files[0];
             if(selectedFile) fileNameDisplay.textContent = selectedFile.name;
+            stopVideoProcessing = true; // Detener bucle local previo
+            els.canvasSalida.classList.add('hidden'); // Ocultar canvas
         };
         
-        // Slider de confianza
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
 
         // --- LÓGICA DE DRAG & DROP ---
-        
-        // Evitar que el navegador abra la imagen por defecto en pantalla completa
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
@@ -311,48 +313,39 @@
             e.stopPropagation();
         }
 
-        // Efectos visuales de arrastre (Iluminar recuadro)
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.add('!border-sar', 'bg-sar/20');
             }, false);
         });
 
-        // Apagar iluminación al salir o soltar
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.remove('!border-sar', 'bg-sar/20');
             }, false);
         });
 
-        // Manejar el archivo soltado (Drop)
         dropZone.addEventListener('drop', async (e) => {
             const dt = e.dataTransfer;
+            stopVideoProcessing = true; // Detener bucle local previo
+            els.canvasSalida.classList.add('hidden'); // Ocultar canvas
 
-            // 1er Intento: Archivos locales arrastrados desde el sistema operativo
             if (dt.files && dt.files.length > 0) {
                 selectedFile = dt.files[0];
                 fileNameDisplay.textContent = selectedFile.name;
                 return;
             }
 
-            // 2do Intento: Imágenes arrastradas desde otra pestaña web (Lectura de URL)
             const url = dt.getData('text/uri-list') || dt.getData('text/plain');
             if (url) {
                 fileNameDisplay.textContent = "Importando imagen web...";
                 try {
-                    // Hacer un "fetch" para descargar la imagen en segundo plano
                     const response = await fetch(url);
                     const blob = await response.blob();
-                    
-                    // Extraer el nombre de la URL o asignar uno táctico
                     let filename = url.split('/').pop().split('?')[0];
                     if (!filename || !filename.includes('.')) filename = 'INTEL_WEB_IMPORT.jpg';
-                    
-                    // Convertir el Blob descargado en un Archivo válido para nuestro Backend
                     selectedFile = new File([blob], filename, { type: blob.type });
                     fileNameDisplay.textContent = selectedFile.name;
-                    
                 } catch (error) {
                     console.error("Bloqueo CORS interceptado:", error);
                     alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor de origen bloquea la extracción directa de esta imagen. Guárdala en tu equipo local y arrástrala de nuevo.");
@@ -361,7 +354,7 @@
             }
         }, false);
         
-        // --- LISTENER REACTIVO (STREAMING DE PROGRESO) ---
+        // --- LISTENER REACTIVO (STREAMING DE PROGRESO NGROK) ---
         async function listenToProgressStream() {
             try {
                 const response = await fetch(`${NGROK_URL}/stream_progreso/`, { 
@@ -389,18 +382,66 @@
                 }
             } catch (error) {
                 console.warn("Canal de telemetría cerrado o interrumpido.");
-                // Si el streaming falla por caída de servidor, reactivamos el radar visual
                 setBackendDisconnected();
             }
         }
 
-        // --- PROCESAMIENTO PRINCIPAL ---
+        // --- PROCESAMIENTO PRINCIPAL (LOCAL Y NGROK) ---
         els.btnProcess.onclick = async () => {
-            if (!backendReady) return alert("El Nodo GPU está apagado. Inicia el script en Google Colab primero.");
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
+            const modeloSeleccionado = document.getElementById('modelSelect').value;
+            const confThreshold = parseFloat(document.getElementById('confSlider').value);
+            const isVideo = selectedFile.type.startsWith('video');
+
+            stopVideoProcessing = true; // Reiniciar estado de video local
+
+            // --- BIFURCACIÓN A: MOTOR LOCAL EDGE (YOLO26-LOCAL) ---
+            if (modeloSeleccionado === 'YOLO26-LOCAL') {
+                els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
+                els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+                els.canvasSalida.classList.add('hidden');
+                els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
+                
+                // Simulación visual de carga local
+                els.progressBar.style.width = "60%";
+                els.progressPercent.textContent = "60%";
+                els.progressText.textContent = "CARGANDO MOTOR EDGE...";
+
+                try {
+                    if (isVideo) {
+                        await procesarVideoLocalEdge(selectedFile, confThreshold);
+                    } else {
+                        await procesarImagenLocalEdge(selectedFile, confThreshold);
+                    }
+                    
+                    els.actionButtons.classList.remove('hidden');
+                    // Ocultamos opciones de PDF en el modelo local
+                    els.btnDownloadPDF.style.display = 'none'; 
+                    els.btnViewPDF.style.display = 'none';
+                    els.btnDownloadVideo.style.display = 'flex';
+                    
+                    els.btnDownloadVideo.onclick = () => {
+                        const enlace = document.createElement('a'); 
+                        enlace.href = els.canvasSalida.toDataURL(isVideo ? 'image/jpeg' : selectedFile.type); 
+                        enlace.download = "SAR_Local_" + selectedFile.name; 
+                        enlace.click();
+                    };
+                } catch (error) {
+                    console.error("Error Edge:", error);
+                    alert("Error en motor Local Edge: " + error.message);
+                    els.placeholder.classList.remove('hidden');
+                } finally {
+                    els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
+                }
+                return; // Fin de la ejecución local, salimos de la función
+            }
+
+            // --- BIFURCACIÓN B: NODO C2 (NGROK) ---
+            if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia el script en Google Colab primero o usa YOLO26 LOCAL.");
 
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
             els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+            els.canvasSalida.classList.add('hidden');
             els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
             
             els.progressBar.style.width = "0%";
@@ -411,10 +452,9 @@
 
             const fd = new FormData();
             fd.append('file', selectedFile);
-            fd.append('modelo', document.getElementById('modelSelect').value);
-            fd.append('conf', document.getElementById('confSlider').value);
+            fd.append('modelo', modeloSeleccionado);
+            fd.append('conf', confThreshold);
 
-            const isVideo = selectedFile.type.startsWith('video');
             try {
                 const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { 
                     method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } 
@@ -428,6 +468,10 @@
                 else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
                 
                 els.actionButtons.classList.remove('hidden');
+                // Restauramos la visibilidad de los botones en caso de haber usado el local antes
+                els.btnDownloadPDF.style.display = 'flex'; 
+                els.btnViewPDF.style.display = 'flex';
+                els.btnDownloadVideo.style.display = 'flex';
                 
                 els.btnDownloadVideo.onclick = () => {
                     const a = document.createElement('a'); a.href = bUrl; a.download = "SAR_Feed_" + selectedFile.name; a.click();
@@ -460,16 +504,167 @@
                 };
 
             } catch (e) {
-                alert("Error crítico durante el análisis del feed."); 
+                alert("Error crítico durante el análisis del feed remoto."); 
                 els.placeholder.classList.remove('hidden');
-                // Si la inferencia falla por desconexión, encendemos el ping rojo
                 setBackendDisconnected();
             } finally { 
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
             }
         };
 
-        // --- ESTADÍSTICAS ---
+        // --- MOTOR LOCAL EDGE (FUNCIONES ONNX) ---
+        async function initONNXSession() {
+            if (!sessionOrt) {
+                console.log("Cargando modelo ONNX en Memoria...");
+                sessionOrt = await ort.InferenceSession.create('./yolo26-small.onnx', {
+                    executionProviders: ['webgl', 'wasm']
+                });
+                console.log("Modelo WebGL/WASM cargado exitosamente.");
+            }
+            return sessionOrt;
+        }
+
+        async function procesarImagenLocalEdge(file, confThreshold) {
+            const session = await initONNXSession();
+            
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = async () => {
+                    const canvas = els.canvasSalida;
+                    canvas.classList.remove('hidden');
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    const inputSize = 640;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = inputSize; 
+                    tempCanvas.height = inputSize;
+                    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+                    tempCtx.drawImage(img, 0, 0, inputSize, inputSize);
+                    
+                    const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
+                    const floatData = new Float32Array(3 * inputSize * inputSize);
+                    for (let i = 0; i < inputSize * inputSize; i++) {
+                        floatData[i] = imgData[i * 4] / 255.0;
+                        floatData[inputSize * inputSize + i] = imgData[i * 4 + 1] / 255.0;
+                        floatData[2 * inputSize * inputSize + i] = imgData[i * 4 + 2] / 255.0;
+                    }
+                    
+                    const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
+                    const feeds = {}; feeds[session.inputNames[0]] = tensor;
+                    
+                    els.progressText.textContent = "EJECUTANDO INFERENCIA EDGE...";
+                    const results = await session.run(feeds);
+                    const output = results[session.outputNames[0]].data;
+                    
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                    resolve();
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        async function procesarVideoLocalEdge(file, confThreshold) {
+            stopVideoProcessing = false;
+            const session = await initONNXSession();
+            
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.muted = true; 
+            video.playsInline = true;
+            
+            return new Promise((resolve) => {
+                video.onloadeddata = async () => {
+                    await video.play();
+                    
+                    const canvas = els.canvasSalida;
+                    canvas.classList.remove('hidden');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    const inputSize = 640;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = inputSize; 
+                    tempCanvas.height = inputSize;
+                    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+                    
+                    async function processFrame() {
+                        if (video.paused || video.ended || stopVideoProcessing) return;
+                        
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        tempCtx.drawImage(video, 0, 0, inputSize, inputSize);
+                        
+                        const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
+                        const floatData = new Float32Array(3 * inputSize * inputSize);
+                        for (let i = 0; i < inputSize * inputSize; i++) {
+                            floatData[i] = imgData[i * 4] / 255.0;
+                            floatData[inputSize * inputSize + i] = imgData[i * 4 + 1] / 255.0;
+                            floatData[2 * inputSize * inputSize + i] = imgData[i * 4 + 2] / 255.0;
+                        }
+                        
+                        const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
+                        const feeds = {}; feeds[session.inputNames[0]] = tensor;
+                        
+                        const results = await session.run(feeds);
+                        const output = results[session.outputNames[0]].data;
+                        
+                        dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                        requestAnimationFrame(processFrame);
+                    }
+                    
+                    processFrame();
+                    resolve();
+                };
+            });
+        }
+
+        function dibujarDetecciones(outputData, ctx, canvasWidth, canvasHeight, inputSize, confThreshold) {
+            const scaleX = canvasWidth / inputSize;
+            const scaleY = canvasHeight / inputSize;
+            const numDetections = outputData.length / 6; // Formato con NMS
+
+            ctx.lineWidth = 3;
+            ctx.font = "bold 16px 'JetBrains Mono', monospace";
+
+            for (let i = 0; i < numDetections; i++) {
+                const offset = i * 6;
+                const x1 = outputData[offset];
+                const y1 = outputData[offset + 1];
+                const x2 = outputData[offset + 2];
+                const y2 = outputData[offset + 3];
+                const score = outputData[offset + 4];
+                
+                if (score < confThreshold) continue;
+
+                const rectX = x1 * scaleX;
+                const rectY = y1 * scaleY;
+                const rectW = (x2 - x1) * scaleX;
+                const rectH = (y2 - y1) * scaleY;
+
+                if ((rectW * rectH) < 10) continue; // Filtro de ruido
+
+                ctx.strokeStyle = "#ff5722"; 
+                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
+                ctx.beginPath();
+                ctx.rect(rectX, rectY, rectW, rectH);
+                ctx.stroke();
+                ctx.fill();
+
+                ctx.fillStyle = "#ff5722";
+                const text = `PER ${(score * 100).toFixed(0)}%`;
+                const textWidth = ctx.measureText(text).width;
+                ctx.fillRect(rectX, rectY - 22, textWidth + 10, 22);
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(text, rectX + 5, rectY - 6);
+            }
+        }
+
+        // --- ESTADÍSTICAS (Módulo Ngrok) ---
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
@@ -482,7 +677,6 @@
                 Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { renderTable(results.data); renderCharts(results.data); } });
             } catch (error) { 
                 els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; 
-                // Si pedir estadísticas falla, el nodo ha caído
                 setBackendDisconnected();
             }
         }
