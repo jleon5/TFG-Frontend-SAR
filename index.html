@@ -191,17 +191,14 @@
     </div>
 
     <script>
-        // ¡IMPORTANTE! COLOCA AQUÍ TU DOMINIO ESTÁTICO DE NGROK
         const NGROK_URL = "https://groundable-unratable-macy.ngrok-free.dev";
 
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
         
-        // Variables de estado de red
         let backendReady = false;
         let pingInterval = null;
 
-        // Variables Motor Edge (YOLO26 Local)
         let stopVideoProcessing = false;
         let sessionOrt = null;
 
@@ -209,7 +206,7 @@
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
             btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
             resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'), 
-            canvasSalida: document.getElementById('canvasSalida'), // Nuevo elemento canvas
+            canvasSalida: document.getElementById('canvasSalida'), 
             loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'), 
             btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'), 
             btnCloseStats: document.getElementById('btnCloseStats'), statsTable: document.getElementById('statsTableBody'),
@@ -221,7 +218,6 @@
             btnViewPDF: document.getElementById('btnViewPDF')
         };
 
-        // --- SISTEMA DE LATIDO INTELIGENTE (SMART POLLING) ---
         function setBackendDisconnected() {
             if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
                 els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
@@ -229,23 +225,17 @@
                 els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
                 els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
                 els.nodeStatusText.textContent = "NODO APAGADO";
-                // Ya NO deshabilitamos el botón, porque ahora podemos usar el motor local offgrid.
                 backendReady = false;
             }
             startPing();
         }
 
         function startPing() {
-            if (!pingInterval) {
-                pingInterval = setInterval(checkBackend, 5000);
-            }
+            if (!pingInterval) pingInterval = setInterval(checkBackend, 5000);
         }
 
         function stopPing() {
-            if (pingInterval) {
-                clearInterval(pingInterval);
-                pingInterval = null;
-            }
+            if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
         }
 
         async function checkBackend() {
@@ -264,15 +254,12 @@
                 } else {
                     setBackendDisconnected();
                 }
-            } catch (error) {
-                setBackendDisconnected();
-            }
+            } catch (error) { setBackendDisconnected(); }
         }
         
-        startPing();
-        checkBackend();
+        startPing(); checkBackend();
 
-        // --- TEMA ---
+        // TEMA
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             htmlDoc.classList.add('dark'); els.themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
         }
@@ -283,10 +270,10 @@
             if (!els.statsModal.classList.contains('hidden')) loadStatsData();
         };
 
-        // --- RELOJ UTC ---
+        // RELOJ UTC
         setInterval(() => document.getElementById('clock').textContent = new Date().toISOString().split('T')[1].split('.')[0] + ' UTC', 1000);
 
-        // --- ARCHIVOS Y DRAG & DROP ---
+        // ARCHIVOS Y DRAG & DROP
         let selectedFile = null;
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileName');
@@ -296,39 +283,26 @@
         els.fileInput.onchange = (e) => {
             selectedFile = e.target.files[0];
             if(selectedFile) fileNameDisplay.textContent = selectedFile.name;
-            stopVideoProcessing = true; // Detener bucle local previo
-            els.canvasSalida.classList.add('hidden'); // Ocultar canvas
+            stopVideoProcessing = true; 
+            els.canvasSalida.classList.add('hidden'); 
         };
         
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
 
-        // --- LÓGICA DE DRAG & DROP ---
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
         });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.add('!border-sar', 'bg-sar/20');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove('!border-sar', 'bg-sar/20');
-            }, false);
-        });
+        ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('!border-sar', 'bg-sar/20'), false));
+        ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('!border-sar', 'bg-sar/20'), false));
 
         dropZone.addEventListener('drop', async (e) => {
             const dt = e.dataTransfer;
-            stopVideoProcessing = true; // Detener bucle local previo
-            els.canvasSalida.classList.add('hidden'); // Ocultar canvas
+            stopVideoProcessing = true; 
+            els.canvasSalida.classList.add('hidden'); 
 
             if (dt.files && dt.files.length > 0) {
                 selectedFile = dt.files[0];
@@ -347,30 +321,24 @@
                     selectedFile = new File([blob], filename, { type: blob.type });
                     fileNameDisplay.textContent = selectedFile.name;
                 } catch (error) {
-                    console.error("Bloqueo CORS interceptado:", error);
-                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor de origen bloquea la extracción directa de esta imagen. Guárdala en tu equipo local y arrástrala de nuevo.");
+                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor bloquea la extracción. Guárdala en tu equipo local y arrástrala.");
                     fileNameDisplay.textContent = "Error al importar";
                 }
             }
         }, false);
         
-        // --- LISTENER REACTIVO (STREAMING DE PROGRESO NGROK) ---
+        // STREAMING NGROK
         async function listenToProgressStream() {
             try {
-                const response = await fetch(`${NGROK_URL}/stream_progreso/`, { 
-                    headers: { 'ngrok-skip-browser-warning': 'true' } 
-                });
-                
+                const response = await fetch(`${NGROK_URL}/stream_progreso/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
 
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
-                    
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n').filter(line => line.trim() !== '');
-                    
                     for (const line of lines) {
                         try {
                             const estado = JSON.parse(line);
@@ -380,32 +348,27 @@
                         } catch(e) { } 
                     }
                 }
-            } catch (error) {
-                console.warn("Canal de telemetría cerrado o interrumpido.");
-                setBackendDisconnected();
-            }
+            } catch (error) { setBackendDisconnected(); }
         }
 
-        // --- PROCESAMIENTO PRINCIPAL (LOCAL Y NGROK) ---
+        // --- PROCESAMIENTO PRINCIPAL ---
         els.btnProcess.onclick = async () => {
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
             const modeloSeleccionado = document.getElementById('modelSelect').value;
             const confThreshold = parseFloat(document.getElementById('confSlider').value);
             const isVideo = selectedFile.type.startsWith('video');
 
-            stopVideoProcessing = true; // Reiniciar estado de video local
+            stopVideoProcessing = true; 
 
-            // --- BIFURCACIÓN A: MOTOR LOCAL EDGE (YOLO26-LOCAL) ---
             if (modeloSeleccionado === 'YOLO26-LOCAL') {
                 els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
                 els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
                 els.canvasSalida.classList.add('hidden');
                 els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
                 
-                // Simulación visual de carga local
-                els.progressBar.style.width = "60%";
-                els.progressPercent.textContent = "60%";
-                els.progressText.textContent = "CARGANDO MOTOR EDGE...";
+                els.progressBar.style.width = "0%";
+                els.progressPercent.textContent = "0%";
+                els.progressText.textContent = "PREPARANDO MOTOR EDGE...";
 
                 try {
                     if (isVideo) {
@@ -415,7 +378,6 @@
                     }
                     
                     els.actionButtons.classList.remove('hidden');
-                    // Ocultamos opciones de PDF en el modelo local
                     els.btnDownloadPDF.style.display = 'none'; 
                     els.btnViewPDF.style.display = 'none';
                     els.btnDownloadVideo.style.display = 'flex';
@@ -433,11 +395,11 @@
                 } finally {
                     els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
                 }
-                return; // Fin de la ejecución local, salimos de la función
+                return; 
             }
 
-            // --- BIFURCACIÓN B: NODO C2 (NGROK) ---
-            if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia el script en Google Colab primero o usa YOLO26 LOCAL.");
+            // NODO C2 (NGROK)
+            if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia Colab primero o usa YOLO26 LOCAL.");
 
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
             els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
@@ -468,7 +430,6 @@
                 else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
                 
                 els.actionButtons.classList.remove('hidden');
-                // Restauramos la visibilidad de los botones en caso de haber usado el local antes
                 els.btnDownloadPDF.style.display = 'flex'; 
                 els.btnViewPDF.style.display = 'flex';
                 els.btnDownloadVideo.style.display = 'flex';
@@ -484,10 +445,7 @@
                         const pdfBlob = await response.blob();
                         const fileUrl = URL.createObjectURL(pdfBlob);
                         const a = document.createElement('a'); a.href = fileUrl; a.download = "SAR_Reporte_Tactico.pdf"; a.click();
-                    } catch (e) { 
-                        alert("Error al descargar informe."); 
-                        setBackendDisconnected();
-                    }
+                    } catch (e) { alert("Error al descargar informe."); setBackendDisconnected(); }
                 };
 
                 els.btnViewPDF.onclick = async () => {
@@ -497,10 +455,7 @@
                         const pdfBlob = await response.blob();
                         const fileUrl = URL.createObjectURL(pdfBlob);
                         window.open(fileUrl, '_blank');
-                    } catch (e) { 
-                        alert("Error al abrir informe."); 
-                        setBackendDisconnected();
-                    }
+                    } catch (e) { alert("Error al abrir informe."); setBackendDisconnected(); }
                 };
 
             } catch (e) {
@@ -512,21 +467,19 @@
             }
         };
 
-        // --- MOTOR LOCAL EDGE (FUNCIONES ONNX) ---
+        // --- MOTOR LOCAL EDGE (ONNX) ---
         async function initONNXSession() {
             if (!sessionOrt) {
-                console.log("Cargando modelo ONNX en Memoria...");
+                console.log("Cargando modelo ONNX...");
                 sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
                     executionProviders: ['webgl', 'wasm']
                 });
-                console.log("Modelo WebGL/WASM cargado exitosamente.");
             }
             return sessionOrt;
         }
 
         async function procesarImagenLocalEdge(file, confThreshold) {
             const session = await initONNXSession();
-            
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = async () => {
@@ -534,13 +487,11 @@
                     canvas.classList.remove('hidden');
                     const ctx = canvas.getContext('2d');
                     
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    canvas.width = img.width; canvas.height = img.height;
                     
                     const inputSize = 640;
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = inputSize; 
-                    tempCanvas.height = inputSize;
+                    tempCanvas.width = inputSize; tempCanvas.height = inputSize;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     tempCtx.drawImage(img, 0, 0, inputSize, inputSize);
                     
@@ -557,67 +508,106 @@
                     
                     els.progressText.textContent = "EJECUTANDO INFERENCIA EDGE...";
                     const results = await session.run(feeds);
-                    const output = results[session.outputNames[0]].data;
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                    dibujarDetecciones(results[session.outputNames[0]].data, ctx, canvas.width, canvas.height, inputSize, confThreshold);
                     resolve();
                 };
                 img.src = URL.createObjectURL(file);
             });
         }
 
+        // --- PROCESAMIENTO OFFLINE Y REPRODUCCIÓN FLUIDA DE VÍDEO ---
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
             
             const video = document.createElement('video');
             video.src = URL.createObjectURL(file);
-            video.muted = true; 
-            video.playsInline = true;
+            video.muted = true; video.playsInline = true; video.loop = true;
             
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 video.onloadeddata = async () => {
-                    await video.play();
-                    
                     const canvas = els.canvasSalida;
                     canvas.classList.remove('hidden');
                     const ctx = canvas.getContext('2d');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                     
                     const inputSize = 640;
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = inputSize; 
-                    tempCanvas.height = inputSize;
+                    tempCanvas.width = inputSize; tempCanvas.height = inputSize;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     
-                    async function processFrame() {
-                        if (video.paused || video.ended || stopVideoProcessing) return;
-                        
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        tempCtx.drawImage(video, 0, 0, inputSize, inputSize);
-                        
-                        const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
-                        const floatData = new Float32Array(3 * inputSize * inputSize);
-                        for (let i = 0; i < inputSize * inputSize; i++) {
-                            floatData[i] = imgData[i * 4] / 255.0;
-                            floatData[inputSize * inputSize + i] = imgData[i * 4 + 1] / 255.0;
-                            floatData[2 * inputSize * inputSize + i] = imgData[i * 4 + 2] / 255.0;
+                    const duracionTotal = video.duration;
+                    let tiempoActual = 0;
+                    const fpsInferencia = 5; // Extraemos 5 frames por segundo en segundo plano
+                    const salto = 1 / fpsInferencia; 
+                    
+                    const deteccionesGuardadas = {};
+                    
+                    els.progressText.textContent = "INFERENCIA EDGE (PRE-CÁLCULO)...";
+                    
+                    try {
+                        // 1. FASE DE PROCESADO OFFLINE (Extracción y Guardado)
+                        while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
+                            video.currentTime = tiempoActual;
+                            await new Promise(r => { video.onseeked = r; }); 
+                            
+                            tempCtx.drawImage(video, 0, 0, inputSize, inputSize);
+                            const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
+                            const floatData = new Float32Array(3 * inputSize * inputSize);
+                            for (let i = 0; i < inputSize * inputSize; i++) {
+                                floatData[i] = imgData[i * 4] / 255.0;
+                                floatData[inputSize * inputSize + i] = imgData[i * 4 + 1] / 255.0;
+                                floatData[2 * inputSize * inputSize + i] = imgData[i * 4 + 2] / 255.0;
+                            }
+                            
+                            const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
+                            const feeds = {}; feeds[session.inputNames[0]] = tensor;
+                            
+                            const results = await session.run(feeds);
+                            // IMPORTANTE: Clonar el array de salida de Float32
+                            deteccionesGuardadas[tiempoActual.toFixed(2)] = new Float32Array(results[session.outputNames[0]].data);
+                            
+                            const pct = Math.min(100, Math.round((tiempoActual / duracionTotal) * 100));
+                            els.progressBar.style.width = `${pct}%`;
+                            els.progressPercent.textContent = `${pct}%`;
+                            
+                            tiempoActual += salto;
                         }
                         
-                        const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
-                        const feeds = {}; feeds[session.inputNames[0]] = tensor;
+                        if (stopVideoProcessing) { resolve(); return; }
                         
-                        const results = await session.run(feeds);
-                        const output = results[session.outputNames[0]].data;
+                        // Ocultamos la carga y mostramos los botones (resolvemos la promesa)
+                        resolve(); 
                         
-                        dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
-                        requestAnimationFrame(processFrame);
+                        // 2. FASE DE REPRODUCCIÓN FLUIDA
+                        video.currentTime = 0;
+                        await new Promise(r => { video.onseeked = r; });
+                        await video.play();
+                        
+                        function renderFrame() {
+                            if (video.paused && !video.loop || stopVideoProcessing) return;
+                            
+                            // Pintar frame real de video a máxima fluidez (60/30 FPS)
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            // Buscar las coordenadas guardadas del segundo más cercano
+                            const t = video.currentTime;
+                            const tAproximado = (Math.round(t * fpsInferencia) / fpsInferencia).toFixed(2);
+                            
+                            const output = deteccionesGuardadas[tAproximado];
+                            if (output) {
+                                dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                            }
+                            
+                            requestAnimationFrame(renderFrame);
+                        }
+                        renderFrame();
+
+                    } catch (err) {
+                        reject(err);
                     }
-                    
-                    processFrame();
-                    resolve();
                 };
             });
         }
@@ -625,34 +615,26 @@
         function dibujarDetecciones(outputData, ctx, canvasWidth, canvasHeight, inputSize, confThreshold) {
             const scaleX = canvasWidth / inputSize;
             const scaleY = canvasHeight / inputSize;
-            const numDetections = outputData.length / 6; // Formato con NMS
+            const numDetections = outputData.length / 6; 
 
             ctx.lineWidth = 3;
             ctx.font = "bold 16px 'JetBrains Mono', monospace";
 
             for (let i = 0; i < numDetections; i++) {
                 const offset = i * 6;
-                const x1 = outputData[offset];
-                const y1 = outputData[offset + 1];
-                const x2 = outputData[offset + 2];
-                const y2 = outputData[offset + 3];
+                const x1 = outputData[offset]; const y1 = outputData[offset + 1];
+                const x2 = outputData[offset + 2]; const y2 = outputData[offset + 3];
                 const score = outputData[offset + 4];
                 
                 if (score < confThreshold) continue;
 
-                const rectX = x1 * scaleX;
-                const rectY = y1 * scaleY;
-                const rectW = (x2 - x1) * scaleX;
-                const rectH = (y2 - y1) * scaleY;
+                const rectX = x1 * scaleX; const rectY = y1 * scaleY;
+                const rectW = (x2 - x1) * scaleX; const rectH = (y2 - y1) * scaleY;
 
-                if ((rectW * rectH) < 10) continue; // Filtro de ruido
+                if ((rectW * rectH) < 10) continue; 
 
-                ctx.strokeStyle = "#ff5722"; 
-                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
-                ctx.beginPath();
-                ctx.rect(rectX, rectY, rectW, rectH);
-                ctx.stroke();
-                ctx.fill();
+                ctx.strokeStyle = "#ff5722"; ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
+                ctx.beginPath(); ctx.rect(rectX, rectY, rectW, rectH); ctx.stroke(); ctx.fill();
 
                 ctx.fillStyle = "#ff5722";
                 const text = `PER ${(score * 100).toFixed(0)}%`;
@@ -664,7 +646,7 @@
             }
         }
 
-        // --- ESTADÍSTICAS (Módulo Ngrok) ---
+        // --- ESTADÍSTICAS ---
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
