@@ -218,6 +218,7 @@
             btnViewPDF: document.getElementById('btnViewPDF')
         };
 
+        // --- SISTEMA NGROK / PING ---
         function setBackendDisconnected() {
             if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
                 els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
@@ -230,13 +231,8 @@
             startPing();
         }
 
-        function startPing() {
-            if (!pingInterval) pingInterval = setInterval(checkBackend, 5000);
-        }
-
-        function stopPing() {
-            if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
-        }
+        function startPing() { if (!pingInterval) pingInterval = setInterval(checkBackend, 5000); }
+        function stopPing() { if (pingInterval) { clearInterval(pingInterval); pingInterval = null; } }
 
         async function checkBackend() {
             try {
@@ -251,15 +247,13 @@
                         backendReady = true;
                     }
                     stopPing();
-                } else {
-                    setBackendDisconnected();
-                }
+                } else { setBackendDisconnected(); }
             } catch (error) { setBackendDisconnected(); }
         }
         
         startPing(); checkBackend();
 
-        // TEMA
+        // --- TEMA Y UI ---
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             htmlDoc.classList.add('dark'); els.themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
         }
@@ -270,10 +264,9 @@
             if (!els.statsModal.classList.contains('hidden')) loadStatsData();
         };
 
-        // RELOJ UTC
         setInterval(() => document.getElementById('clock').textContent = new Date().toISOString().split('T')[1].split('.')[0] + ' UTC', 1000);
 
-        // ARCHIVOS Y DRAG & DROP
+        // --- MANEJO DE ARCHIVOS ---
         let selectedFile = null;
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileName');
@@ -327,7 +320,6 @@
             }
         }, false);
         
-        // STREAMING NGROK
         async function listenToProgressStream() {
             try {
                 const response = await fetch(`${NGROK_URL}/stream_progreso/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
@@ -351,7 +343,7 @@
             } catch (error) { setBackendDisconnected(); }
         }
 
-        // --- PROCESAMIENTO PRINCIPAL ---
+        // --- CONTROL DE PROCESAMIENTO (BIFURCACIÓN PRINCIPAL) ---
         els.btnProcess.onclick = async () => {
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
             const modeloSeleccionado = document.getElementById('modelSelect').value;
@@ -360,6 +352,9 @@
 
             stopVideoProcessing = true; 
 
+            // ==========================================
+            // BIFURCACIÓN A: MOTOR LOCAL EDGE
+            // ==========================================
             if (modeloSeleccionado === 'YOLO26-LOCAL') {
                 els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
                 els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
@@ -398,7 +393,9 @@
                 return; 
             }
 
-            // NODO C2 (NGROK)
+            // ==========================================
+            // BIFURCACIÓN B: NODO C2 (NGROK/COLAB)
+            // ==========================================
             if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia Colab primero o usa YOLO26 LOCAL.");
 
             els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
@@ -467,17 +464,23 @@
             }
         };
 
-        // --- MOTOR LOCAL EDGE (ONNX) ---
+        // =========================================================================
+        // MOTOR LOCAL EDGE (ONNXRUNTIME) - OPTIMIZADO CON WEBGPU Y FRAME SKIPPING
+        // =========================================================================
+        
         async function initONNXSession() {
             if (!sessionOrt) {
-                console.log("Cargando modelo ONNX...");
+                console.log("Iniciando Motor ONNX...");
+                // 1. WEBGPU ACTIVADO para máxima aceleración por hardware
                 sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
-                    executionProviders: ['webgl', 'wasm']
+                    executionProviders: ['webgpu', 'webgl', 'wasm']
                 });
+                console.log("Modelo Edge cargado exitosamente.");
             }
             return sessionOrt;
         }
 
+        // --- PROCESADO DE IMAGEN ---
         async function procesarImagenLocalEdge(file, confThreshold) {
             const session = await initONNXSession();
             return new Promise((resolve) => {
@@ -517,7 +520,7 @@
             });
         }
 
-        // --- PROCESAMIENTO OFFLINE Y REPRODUCCIÓN FLUIDA DE VÍDEO ---
+        // --- PROCESADO DE VIDEO (OFFLINE CON FRAME SKIPPING) ---
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
@@ -540,7 +543,10 @@
                     
                     const duracionTotal = video.duration;
                     let tiempoActual = 0;
-                    const fpsInferencia = 5; // Extraemos 5 frames por segundo en segundo plano
+                    
+                    // 2. FRAME SKIPPING: Extraer 2.5 fotogramas por segundo
+                    // Reduce el tiempo de procesado manteniendo precisión visual para drones
+                    const fpsInferencia = 2.5; 
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
@@ -548,7 +554,7 @@
                     els.progressText.textContent = "INFERENCIA EDGE (PRE-CÁLCULO)...";
                     
                     try {
-                        // 1. FASE DE PROCESADO OFFLINE (Extracción y Guardado)
+                        // FASE 1: Cálculo en la sombra
                         while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
                             video.currentTime = tiempoActual;
                             await new Promise(r => { video.onseeked = r; }); 
@@ -566,7 +572,6 @@
                             const feeds = {}; feeds[session.inputNames[0]] = tensor;
                             
                             const results = await session.run(feeds);
-                            // IMPORTANTE: Clonar el array de salida de Float32
                             deteccionesGuardadas[tiempoActual.toFixed(2)] = new Float32Array(results[session.outputNames[0]].data);
                             
                             const pct = Math.min(100, Math.round((tiempoActual / duracionTotal) * 100));
@@ -577,11 +582,9 @@
                         }
                         
                         if (stopVideoProcessing) { resolve(); return; }
-                        
-                        // Ocultamos la carga y mostramos los botones (resolvemos la promesa)
                         resolve(); 
                         
-                        // 2. FASE DE REPRODUCCIÓN FLUIDA
+                        // FASE 2: Reproducción superpuesta a alta velocidad
                         video.currentTime = 0;
                         await new Promise(r => { video.onseeked = r; });
                         await video.play();
@@ -589,10 +592,8 @@
                         function renderFrame() {
                             if (video.paused && !video.loop || stopVideoProcessing) return;
                             
-                            // Pintar frame real de video a máxima fluidez (60/30 FPS)
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                             
-                            // Buscar las coordenadas guardadas del segundo más cercano
                             const t = video.currentTime;
                             const tAproximado = (Math.round(t * fpsInferencia) / fpsInferencia).toFixed(2);
                             
@@ -612,7 +613,13 @@
             });
         }
 
+        // --- SISTEMA DE DIBUJADO DE ETIQUETAS ---
         function dibujarDetecciones(outputData, ctx, canvasWidth, canvasHeight, inputSize, confThreshold) {
+            
+            // 3. ETIQUETADO EXCLUSIVO PARA "PERSONA" (ESTÁNDAR SAR)
+            const nombreClase = "PERSONA";
+            const colorTáctico = "#ff5722"; // Naranja SAR
+            
             const scaleX = canvasWidth / inputSize;
             const scaleY = canvasHeight / inputSize;
             const numDetections = outputData.length / 6; 
@@ -625,6 +632,7 @@
                 const x1 = outputData[offset]; const y1 = outputData[offset + 1];
                 const x2 = outputData[offset + 2]; const y2 = outputData[offset + 3];
                 const score = outputData[offset + 4];
+                // El ID de clase está en outputData[offset + 5], pero como solo tienes 1, lo ignoramos para simplificar
                 
                 if (score < confThreshold) continue;
 
@@ -633,11 +641,14 @@
 
                 if ((rectW * rectH) < 10) continue; 
 
-                ctx.strokeStyle = "#ff5722"; ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
+                // Caja de bounding
+                ctx.strokeStyle = colorTáctico; 
+                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
                 ctx.beginPath(); ctx.rect(rectX, rectY, rectW, rectH); ctx.stroke(); ctx.fill();
 
-                ctx.fillStyle = "#ff5722";
-                const text = `PER ${(score * 100).toFixed(0)}%`;
+                // Cartel
+                ctx.fillStyle = colorTáctico;
+                const text = `${nombreClase} ${(score * 100).toFixed(0)}%`;
                 const textWidth = ctx.measureText(text).width;
                 ctx.fillRect(rectX, rectY - 22, textWidth + 10, 22);
                 
@@ -646,7 +657,10 @@
             }
         }
 
-        // --- ESTADÍSTICAS ---
+        // =========================================================================
+        // ESTADÍSTICAS Y TELEMETRÍA (NGROK)
+        // =========================================================================
+        
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
