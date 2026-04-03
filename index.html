@@ -104,17 +104,31 @@
             </section>
         </aside>
 
-        <section class="flex-1 p-8 flex items-center justify-center relative overflow-auto bg-slate-100/50 dark:bg-[#080b13] transition-theme">
+        <section class="flex-1 p-8 flex items-center justify-center relative overflow-hidden bg-slate-100/50 dark:bg-[#080b13] transition-theme">
             
             <div class="absolute inset-0 topo-bg pointer-events-none z-0"></div>
 
             <div id="resultContainer" class="relative z-10 max-w-full max-h-full flex items-center justify-center rounded-2xl overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[400px] min-w-[300px]">
+                
                 <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-20"><i class="ph ph-radar text-8xl animate-pulse"></i><p class="font-mono text-sm tracking-widest">SISTEMA LISTO</p></div>
+                
                 <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" src="">
                 <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" controls autoplay loop muted></video>
+                
                 <canvas id="canvasSalida" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50"></canvas>
                 
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-10">
+                <div id="customVideoControls" class="absolute bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-md bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl p-3 flex items-center gap-4 hidden z-30 shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-all">
+                    <button id="btnPlayPause" class="text-white hover:text-sar transition-colors outline-none focus:outline-none">
+                        <i id="playPauseIcon" class="ph-fill ph-pause text-3xl"></i>
+                    </button>
+                    <div class="flex-1 flex items-center gap-3">
+                        <span id="timeCurrent" class="text-[10px] font-mono text-slate-400 w-8 text-right">00:00</span>
+                        <input type="range" id="playbackSlider" value="0" min="0" max="100" step="0.1" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sar hover:accent-sar-dark outline-none">
+                        <span id="timeTotal" class="text-[10px] font-mono text-slate-400 w-8">00:00</span>
+                    </div>
+                </div>
+
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-40">
                     <i class="ph ph-radar text-6xl text-sar animate-spin mb-2"></i>
                     <p id="progressText" class="font-mono text-sm tracking-widest text-slate-700 dark:text-slate-300 font-bold uppercase">Sincronizando feed...</p>
                     
@@ -207,6 +221,9 @@
             btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
             resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'), 
             canvasSalida: document.getElementById('canvasSalida'), 
+            customVideoControls: document.getElementById('customVideoControls'), btnPlayPause: document.getElementById('btnPlayPause'),
+            playPauseIcon: document.getElementById('playPauseIcon'), playbackSlider: document.getElementById('playbackSlider'),
+            timeCurrent: document.getElementById('timeCurrent'), timeTotal: document.getElementById('timeTotal'),
             loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'), 
             btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'), 
             btnCloseStats: document.getElementById('btnCloseStats'), statsTable: document.getElementById('statsTableBody'),
@@ -217,6 +234,13 @@
             btnDownloadVideo: document.getElementById('btnDownloadVideo'), btnDownloadPDF: document.getElementById('btnDownloadPDF'),
             btnViewPDF: document.getElementById('btnViewPDF')
         };
+
+        // --- UTILIDAD DE TIEMPO ---
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
 
         // --- SISTEMA NGROK / PING ---
         function setBackendDisconnected() {
@@ -278,6 +302,7 @@
             if(selectedFile) fileNameDisplay.textContent = selectedFile.name;
             stopVideoProcessing = true; 
             els.canvasSalida.classList.add('hidden'); 
+            els.customVideoControls.classList.add('hidden');
         };
         
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
@@ -296,6 +321,7 @@
             const dt = e.dataTransfer;
             stopVideoProcessing = true; 
             els.canvasSalida.classList.add('hidden'); 
+            els.customVideoControls.classList.add('hidden');
 
             if (dt.files && dt.files.length > 0) {
                 selectedFile = dt.files[0];
@@ -351,6 +377,7 @@
             const isVideo = selectedFile.type.startsWith('video');
 
             stopVideoProcessing = true; 
+            els.customVideoControls.classList.add('hidden'); // Ocultar controles si estaban visibles
 
             // ==========================================
             // BIFURCACIÓN A: MOTOR LOCAL EDGE
@@ -465,13 +492,12 @@
         };
 
         // =========================================================================
-        // MOTOR LOCAL EDGE (ONNXRUNTIME) - OPTIMIZADO CON WEBGPU Y FRAME SKIPPING
+        // MOTOR LOCAL EDGE (ONNXRUNTIME)
         // =========================================================================
         
         async function initONNXSession() {
             if (!sessionOrt) {
                 console.log("Iniciando Motor ONNX...");
-                // 1. WEBGPU ACTIVADO para máxima aceleración por hardware
                 sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
                     executionProviders: ['webgpu', 'webgl', 'wasm']
                 });
@@ -520,7 +546,7 @@
             });
         }
 
-        // --- PROCESADO DE VIDEO (OFFLINE CON FRAME SKIPPING) ---
+        // --- PROCESADO DE VIDEO ---
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
@@ -543,14 +569,10 @@
                     
                     const duracionTotal = video.duration;
                     let tiempoActual = 0;
-                    
-                    // 2. FRAME SKIPPING: Extraer 2.5 fotogramas por segundo
-                    // Reduce el tiempo de procesado manteniendo precisión visual para drones
                     const fpsInferencia = 2.5; 
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
-                    
                     els.progressText.textContent = "INFERENCIA EDGE (PRE-CÁLCULO)...";
                     
                     try {
@@ -582,16 +604,49 @@
                         }
                         
                         if (stopVideoProcessing) { resolve(); return; }
-                        resolve(); 
                         
-                        // FASE 2: Reproducción superpuesta a alta velocidad
+                        // CONFIGURACIÓN DE CONTROLES DEL REPRODUCTOR
+                        els.customVideoControls.classList.remove('hidden');
+                        els.playbackSlider.max = duracionTotal;
+                        els.timeTotal.textContent = formatTime(duracionTotal);
+                        els.playPauseIcon.classList.replace('ph-play', 'ph-pause');
+
+                        let isDraggingSlider = false;
+
+                        // Botón de Play/Pause
+                        els.btnPlayPause.onclick = () => {
+                            if (video.paused) {
+                                video.play();
+                                els.playPauseIcon.classList.replace('ph-play', 'ph-pause');
+                            } else {
+                                video.pause();
+                                els.playPauseIcon.classList.replace('ph-pause', 'ph-play');
+                            }
+                        };
+
+                        // Hacer clic en el canvas hace Play/Pause
+                        els.canvasSalida.onclick = () => els.btnPlayPause.click();
+                        els.canvasSalida.style.cursor = 'pointer';
+
+                        // Eventos del slider
+                        els.playbackSlider.oninput = (e) => {
+                            isDraggingSlider = true;
+                            video.currentTime = e.target.value;
+                            els.timeCurrent.textContent = formatTime(video.currentTime);
+                        };
+                        els.playbackSlider.onchange = () => { isDraggingSlider = false; };
+
+                        resolve(); // Ocultamos barra de carga general
+                        
+                        // FASE 2: Reproducción
                         video.currentTime = 0;
                         await new Promise(r => { video.onseeked = r; });
                         await video.play();
                         
                         function renderFrame() {
-                            if (video.paused && !video.loop || stopVideoProcessing) return;
+                            if (stopVideoProcessing) return;
                             
+                            // Siempre dibujamos para que, al pausar y arrastrar el slider, el fotograma se actualice
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                             
                             const t = video.currentTime;
@@ -600,6 +655,12 @@
                             const output = deteccionesGuardadas[tAproximado];
                             if (output) {
                                 dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                            }
+
+                            // Actualizar la barra de progreso si no la está arrastrando el usuario
+                            if (!isDraggingSlider) {
+                                els.playbackSlider.value = t;
+                                els.timeCurrent.textContent = formatTime(t);
                             }
                             
                             requestAnimationFrame(renderFrame);
@@ -613,13 +674,9 @@
             });
         }
 
-        // --- SISTEMA DE DIBUJADO DE ETIQUETAS ---
         function dibujarDetecciones(outputData, ctx, canvasWidth, canvasHeight, inputSize, confThreshold) {
-            
-            // 3. ETIQUETADO EXCLUSIVO PARA "PERSONA" (ESTÁNDAR SAR)
             const nombreClase = "PERSONA";
-            const colorTáctico = "#ff5722"; // Naranja SAR
-            
+            const colorTáctico = "#ff5722"; 
             const scaleX = canvasWidth / inputSize;
             const scaleY = canvasHeight / inputSize;
             const numDetections = outputData.length / 6; 
@@ -632,7 +689,6 @@
                 const x1 = outputData[offset]; const y1 = outputData[offset + 1];
                 const x2 = outputData[offset + 2]; const y2 = outputData[offset + 3];
                 const score = outputData[offset + 4];
-                // El ID de clase está en outputData[offset + 5], pero como solo tienes 1, lo ignoramos para simplificar
                 
                 if (score < confThreshold) continue;
 
@@ -641,12 +697,10 @@
 
                 if ((rectW * rectH) < 10) continue; 
 
-                // Caja de bounding
                 ctx.strokeStyle = colorTáctico; 
                 ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
                 ctx.beginPath(); ctx.rect(rectX, rectY, rectW, rectH); ctx.stroke(); ctx.fill();
 
-                // Cartel
                 ctx.fillStyle = colorTáctico;
                 const text = `${nombreClase} ${(score * 100).toFixed(0)}%`;
                 const textWidth = ctx.measureText(text).width;
@@ -658,7 +712,7 @@
         }
 
         // =========================================================================
-        // ESTADÍSTICAS Y TELEMETRÍA (NGROK)
+        // ESTADÍSTICAS Y TELEMETRÍA
         // =========================================================================
         
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
