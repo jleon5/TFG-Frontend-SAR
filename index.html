@@ -516,7 +516,7 @@
         async function initONNXSession() {
             if (!sessionOrt) {
                 console.log("Cargando modelo ONNX en Memoria...");
-                sessionOrt = await ort.InferenceSession.create('./yolo26-small.onnx', {
+                sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
                     executionProviders: ['webgl', 'wasm']
                 });
                 console.log("Modelo WebGL/WASM cargado exitosamente.");
