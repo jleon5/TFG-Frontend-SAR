@@ -506,19 +506,31 @@
             return interArea / (box1Area + box2Area - interArea);
         }
 
+        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (Distancia Euclidiana + Fricción) ---
+        function calcularDistancia(box1, box2) {
+            const cx1 = (box1[0] + box1[2]) / 2;
+            const cy1 = (box1[1] + box1[3]) / 2;
+            const cx2 = (box2[0] + box2[2]) / 2;
+            const cy2 = (box2[1] + box2[3]) / 2;
+            return Math.sqrt(Math.pow(cx1 - cx2, 2) + Math.pow(cy1 - cy2, 2));
+        }
+
         class TacticalTracker {
-            constructor(maxPaciencia = 4, iouThreshold = 0.25) {
+            constructor(maxPaciencia = 6, maxDist = 80) { // Aumentamos paciencia a 6 frames
                 this.tracks = [];
                 this.nextId = 1;
-                this.maxPaciencia = maxPaciencia; // Frames que puede desaparecer un objeto antes de ser olvidado (Oclusión)
-                this.iouThreshold = iouThreshold;
+                this.maxPaciencia = maxPaciencia; 
+                this.maxDist = maxDist; // Tolerancia de movimiento en píxeles
             }
 
-            update(detecciones) { // detecciones: [[x1, y1, x2, y2, score], ...]
-                // 1. FÍSICA: Predecir nueva posición de los objetos ya conocidos basándose en su velocidad previa
+            update(detecciones) {
+                // 1. FÍSICA: Predicción de movimiento con Fricción
                 this.tracks.forEach(t => {
                     t.box[0] += t.vx; t.box[1] += t.vy;
                     t.box[2] += t.vx; t.box[3] += t.vy;
+                    
+                    // Fricción: Reducimos velocidad predicha para que no salga volando durante oclusión
+                    t.vx *= 0.6; t.vy *= 0.6;
                     t.age += 1;
                 });
 
@@ -526,20 +538,21 @@
                 let matchedTracks = new Set();
                 let matches = [];
 
-                // 2. MATEMÁTICAS: Calcular intersección (IoU) entre predicciones y nuevas detecciones reales
+                // 2. MATEMÁTICAS: Buscar coincidencia por distancia Euclidiana
                 for (let d = 0; d < detecciones.length; d++) {
                     for (let t = 0; t < this.tracks.length; t++) {
-                        let iou = calcularIoU(detecciones[d], this.tracks[t].box);
-                        if (iou > this.iouThreshold) {
-                            matches.push({d, t, iou});
+                        let dist = calcularDistancia(detecciones[d], this.tracks[t].box);
+                        if (dist < this.maxDist) {
+                            // Puntuación inversa: menor distancia = mayor puntuación
+                            matches.push({d, t, score: 1 / (dist + 1)});
                         }
                     }
                 }
                 
                 // Ordenar por mejor coincidencia
-                matches.sort((a, b) => b.iou - a.iou);
+                matches.sort((a, b) => b.score - a.score);
 
-                // 3. ASIGNACIÓN: Actualizar objetos existentes con nuevos datos
+                // 3. ASIGNACIÓN
                 for (let match of matches) {
                     if (!matchedDetections.has(match.d) && !matchedTracks.has(match.t)) {
                         matchedDetections.add(match.d);
@@ -548,36 +561,29 @@
                         let track = this.tracks[match.t];
                         let det = detecciones[match.d];
 
-                        // Calcular nueva velocidad (Media Móvil Exponencial para suavidad)
                         let framesPasados = track.age === 0 ? 1 : track.age;
-                        let newVx = (det[0] - track.lastSeenBox[0]) / framesPasados;
-                        let newVy = (det[1] - track.lastSeenBox[1]) / framesPasados;
-
-                        track.vx = track.vx * 0.8 + newVx * 0.2; 
-                        track.vy = track.vy * 0.8 + newVy * 0.2;
+                        // Actualizar velocidad con suavizado
+                        track.vx = ((det[0] - track.lastSeenBox[0]) / framesPasados) * 0.4;
+                        track.vy = ((det[1] - track.lastSeenBox[1]) / framesPasados) * 0.4;
 
                         track.box = [...det];
                         track.lastSeenBox = [...det];
                         track.score = det[4];
-                        track.age = 0; // Lo hemos vuelto a ver, reseteamos paciencia
+                        track.age = 0; // Recuperado
                     }
                 }
 
-                // 4. NUEVOS OBJETIVOS: Si hay detecciones no asignadas, son personas nuevas (Nuevo ID)
+                // 4. NUEVOS OBJETIVOS
                 for (let d = 0; d < detecciones.length; d++) {
                     if (!matchedDetections.has(d)) {
                         this.tracks.push({
-                            id: this.nextId++,
-                            box: [...detecciones[d]],
-                            lastSeenBox: [...detecciones[d]],
-                            score: detecciones[d][4],
-                            vx: 0, vy: 0,
-                            age: 0
+                            id: this.nextId++, box: [...detecciones[d]], lastSeenBox: [...detecciones[d]],
+                            score: detecciones[d][4], vx: 0, vy: 0, age: 0
                         });
                     }
                 }
 
-                // 5. LIMPIEZA: Borrar objetos que llevan sin verse más tiempo que el límite de paciencia
+                // 5. LIMPIEZA
                 this.tracks = this.tracks.filter(t => t.age <= this.maxPaciencia);
                 return this.tracks;
             }
