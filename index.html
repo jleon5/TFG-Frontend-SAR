@@ -475,10 +475,10 @@
         };
 
         // =========================================================================
-        // MOTOR LOCAL EDGE (ONNXRUNTIME) + TRACKING DINÁMICO MEJORADO
+        // MOTOR LOCAL EDGE (ONNXRUNTIME) - 640x640 + LETTERBOXING
         // =========================================================================
 
-        const INPUT_SIZE = 416; 
+        const INPUT_SIZE = 640; // VOLVEMOS AL TAMAÑO ORIGINAL PARA MÁXIMA PRECISIÓN
         
         async function initONNXSession() {
             if (!sessionOrt) {
@@ -503,7 +503,7 @@
                 this.tracks = [];
                 this.nextId = 1;
                 this.maxPaciencia = maxPaciencia; 
-                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.35; // Aumentado a 35%
+                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.35; 
             }
 
             update(detecciones) {
@@ -568,9 +568,8 @@
             }
         }
 
-        function extraerCajasRaw(outputData, canvasWidth, canvasHeight, inputSize, confThreshold) {
-            const scaleX = canvasWidth / inputSize;
-            const scaleY = canvasHeight / inputSize;
+        // --- SISTEMA MATEMÁTICO DE RE-ESCALADO TRAS EL LETTERBOXING ---
+        function extraerCajasRaw(outputData, ratio, padX, padY, confThreshold) {
             const numDetections = outputData.length / 6; 
             let cajas = [];
 
@@ -579,10 +578,11 @@
                 const score = outputData[offset + 4];
                 if (score < confThreshold) continue;
 
-                const x1 = outputData[offset] * scaleX;
-                const y1 = outputData[offset + 1] * scaleY;
-                const x2 = outputData[offset + 2] * scaleX;
-                const y2 = outputData[offset + 3] * scaleY;
+                // Deshacer el Padding y el Escalado
+                const x1 = (outputData[offset] - padX) / ratio;
+                const y1 = (outputData[offset + 1] - padY) / ratio;
+                const x2 = (outputData[offset + 2] - padX) / ratio;
+                const y2 = (outputData[offset + 3] - padY) / ratio;
 
                 if (((x2 - x1) * (y2 - y1)) < 10) continue;
                 cajas.push([x1, y1, x2, y2, score]);
@@ -646,7 +646,17 @@
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    tempCtx.drawImage(img, 0, 0, INPUT_SIZE, INPUT_SIZE);
+                    
+                    // LETTERBOXING
+                    const ratio = Math.min(INPUT_SIZE / img.width, INPUT_SIZE / img.height);
+                    const drawW = img.width * ratio;
+                    const drawH = img.height * ratio;
+                    const padX = (INPUT_SIZE - drawW) / 2;
+                    const padY = (INPUT_SIZE - drawH) / 2;
+
+                    tempCtx.fillStyle = "rgb(114, 114, 114)";
+                    tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+                    tempCtx.drawImage(img, padX, padY, drawW, drawH);
                     
                     const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
                     const area = INPUT_SIZE * INPUT_SIZE;
@@ -668,7 +678,7 @@
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
+                    let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, ratio, padX, padY, confThreshold);
                     dibujarCajas(cajasRaw, ctx, cajasRaw.length);
                     
                     resolve();
@@ -698,18 +708,20 @@
                     
                     const duracionTotal = video.duration;
                     let tiempoActual = 0;
-                    
-                    // VELOCIDAD EXTREMA: Bajamos a 1.5 FPS para aligerar la CPU local masivamente
                     const fpsInferencia = 1.5; 
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
-                    
-                    // Aumentamos paciencia (Si va a 1.5fps, 10 frames de paciencia = 6 segundos de oclusión tolerada)
                     const tracker = new TacticalTracker(canvas.width, canvas.height, 10); 
                     let totalContados = 0;
 
-                    // OPTIMIZACIÓN DE RAM CRÍTICA: Asignar matriz fuera del bucle
+                    // LETTERBOX MATH (Se calcula una vez por vídeo)
+                    const ratio = Math.min(INPUT_SIZE / video.videoWidth, INPUT_SIZE / video.videoHeight);
+                    const drawW = video.videoWidth * ratio;
+                    const drawH = video.videoHeight * ratio;
+                    const padX = (INPUT_SIZE - drawW) / 2;
+                    const padY = (INPUT_SIZE - drawH) / 2;
+
                     const area = INPUT_SIZE * INPUT_SIZE;
                     const floatData = new Float32Array(area * 3);
                     const inv255 = 0.003921568627;
@@ -721,7 +733,11 @@
                             video.currentTime = tiempoActual;
                             await new Promise(r => { video.onseeked = r; }); 
                             
-                            tempCtx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
+                            // APLICAR LETTERBOXING FÍSICO AL CANVAS TEMPORAL
+                            tempCtx.fillStyle = "rgb(114, 114, 114)";
+                            tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+                            tempCtx.drawImage(video, padX, padY, drawW, drawH);
+
                             const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
                             
                             for (let i = 0; i < area; i++) {
@@ -736,7 +752,8 @@
                             
                             const results = await session.run(feeds);
                             
-                            let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
+                            // Extraemos las cajas y deshacemos el Letterbox para que cuadren en la pantalla original
+                            let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, ratio, padX, padY, confThreshold);
                             
                             let tracksActuales = tracker.update(cajasRaw);
                             let tracksVisibles = tracksActuales.filter(t => t.age === 0);
