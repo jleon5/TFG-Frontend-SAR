@@ -339,7 +339,6 @@
             btnCloseModelInfo: document.getElementById('btnCloseModelInfo')
         };
 
-        // --- APERTURA/CIERRE DE MODAL DE INFORMACIÓN ---
         els.btnModelInfo.onclick = () => els.modelInfoModal.classList.replace('hidden', 'flex');
         els.btnCloseModelInfo.onclick = () => els.modelInfoModal.classList.replace('flex', 'hidden');
 
@@ -598,7 +597,7 @@
         };
 
         // =========================================================================
-        // MOTOR LOCAL EDGE (ONNXRUNTIME) - 640x640 + LETTERBOXING
+        // MOTOR LOCAL EDGE (ONNXRUNTIME) - PARCHEADO PARA MÓVILES
         // =========================================================================
 
         const INPUT_SIZE = 640; 
@@ -606,9 +605,25 @@
         async function initONNXSession() {
             if (!sessionOrt) {
                 console.log("Iniciando Motor ONNX...");
-                sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
-                    executionProviders: ['webgpu', 'webgl', 'wasm']
-                });
+                try {
+                    // CAMBIO 1: Detección de móviles para forzar un proveedor matemático seguro (WASM puro en lugar de WebGL)
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    const proveedores = isMobile ? ['wasm'] : ['webgpu', 'wasm'];
+                    
+                    // Configuración para aprovechar todos los hilos del procesador móvil
+                    ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 4);
+                    ort.env.wasm.simd = true;
+
+                    sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
+                        executionProviders: proveedores,
+                        graphOptimizationLevel: 'all'
+                    });
+                } catch (e) {
+                    console.warn("Fallo de hardware, activando modo seguro universal...", e);
+                    sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
+                        executionProviders: ['wasm']
+                    });
+                }
             }
             return sessionOrt;
         }
@@ -714,7 +729,6 @@
         function dibujarCajas(cajas, ctx, totalCount = null) {
             const colorTáctico = "#ff5722"; 
             ctx.lineWidth = 3;
-            // Reducimos un poco la fuente en móvil si quieres, aunque al escalar con canvas se ve bien
             ctx.font = "bold 16px 'JetBrains Mono', monospace";
 
             for (let obj of cajas) {
@@ -851,7 +865,13 @@
                     try {
                         while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
                             video.currentTime = tiempoActual;
-                            await new Promise(r => { video.onseeked = r; }); 
+                            
+                            // CAMBIO 2: Retardo seguro para que iOS/Android rendericen el frame
+                            await new Promise(r => { 
+                                video.onseeked = () => {
+                                    setTimeout(r, 40); // 40ms de pausa para evitar el Canvas Negro
+                                }; 
+                            }); 
                             
                             tempCtx.fillStyle = "rgb(114, 114, 114)";
                             tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
