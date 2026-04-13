@@ -73,13 +73,20 @@
             
             <section class="space-y-4">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Configuración</label>
-                <select id="modelSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none transition-theme">
-                    <option value="YOLO26-LOCAL" class="text-sar font-bold">YOLO26 (LOCAL EDGE) - OFFGRID</option>
-                    <option value="YOLO v12">YOLO v12 (Precisión)</option>
-                    <option value="YOLO v8">YOLO v8 (Balanceado)</option>
-                    <option value="YOLO v5">YOLO v5 (Legacy)</option>
-                    <option value="RT-DETR">RT-DETR (Transformer SAR)</option> 
-                </select>
+                
+                <div class="flex gap-2">
+                    <select id="modelSelect" class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none transition-theme cursor-pointer">
+                        <option value="YOLO26-LOCAL" class="text-sar font-bold">YOLO26 (LOCAL EDGE) - OFFGRID</option>
+                        <option value="YOLO v12">YOLO v12 (Precisión)</option>
+                        <option value="YOLO v8">YOLO v8 (Balanceado)</option>
+                        <option value="YOLO v5">YOLO v5 (Legacy)</option>
+                        <option value="RT-DETR">RT-DETR (Transformer SAR)</option> 
+                    </select>
+                    <button id="btnModelInfo" class="shrink-0 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-lg hover:text-sar dark:hover:text-sar hover:border-sar dark:hover:border-sar transition-all outline-none" title="Ver especificaciones de modelos">
+                        <i class="ph-bold ph-info text-lg"></i>
+                    </button>
+                </div>
+
                 <div class="space-y-2">
                     <div class="flex justify-between text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
                     <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35" class="w-full accent-sar cursor-pointer">
@@ -199,6 +206,101 @@
         </div>
     </div>
 
+    <div id="modelInfoModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-panel w-full max-w-4xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+            
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
+                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                    <i class="ph ph-cpu text-sar text-xl"></i> ESPECIFICACIONES DE REDES NEURONALES
+                </h2>
+                <button id="btnCloseModelInfo" class="p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark transition-theme">
+                
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-sar rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                    <i class="ph-duotone ph-laptop absolute -right-4 -bottom-4 text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-sar text-white text-[10px] font-mono font-bold rounded">EDGE (LOCAL)</span>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO26 (OFFGRID)</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Ejecución nativa en el navegador mediante <span class="font-mono text-sar">WebGPU/WASM</span>. No requiere conexión a internet.</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                            <div><span class="text-slate-400">» Lanzamiento:</span> Modelo Personalizado SAR</div>
+                            <div><span class="text-slate-400">» Arquitectura:</span> YOLO Optimizada ONNX (FP32)</div>
+                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: 100% Privacidad, Cero latencia de red, Ideal para zonas sin cobertura.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                    <i class="ph-duotone ph-cloud-check absolute -right-4 -bottom-4 text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-blue-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v12</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">La vanguardia actual en detección de objetos. Implementa mecanismos de atención espacial avanzados.</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                            <div><span class="text-slate-400">» Lanzamiento:</span> Febrero 2025 (Tencent)</div>
+                            <div><span class="text-slate-400">» Arquitectura:</span> Area Attention / CNN Mejorada</div>
+                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Precisión extrema en objetos minúsculos. Perfecto para drones a gran altitud.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-blue-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v8</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">El estándar de oro de la industria. Extremadamente robusto, estable y equilibrado.</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                            <div><span class="text-slate-400">» Lanzamiento:</span> Enero 2023 (Ultralytics)</div>
+                            <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Free CNN</div>
+                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Balance perfecto entre velocidad de inferencia en servidor y precisión constante.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-slate-400 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-slate-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v5</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Arquitectura clásica y altamente eficiente en consumo de recursos del nodo.</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                            <div><span class="text-slate-400">» Lanzamiento:</span> Junio 2020 (Ultralytics)</div>
+                            <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Based CNN (Legacy)</div>
+                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Inferencia ultrarrápida. Ideal para servidores C2 de baja potencia (CPU).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-purple-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-purple-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">RT-DETR</h3>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">La revolución de los Transformadores Visuales aplicada al análisis de vídeo en tiempo real.</p>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                            <div><span class="text-slate-400">» Lanzamiento:</span> Abril 2023 (Baidu)</div>
+                            <div><span class="text-slate-400">» Arquitectura:</span> Vision Transformer (ViT)</div>
+                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Comprensión global del contexto de la imagen. Inmune a cortes bruscos y oclusiones masivas.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <script>
         const NGROK_URL = "https://groundable-unratable-macy.ngrok-free.dev";
         const htmlDoc = document.documentElement;
@@ -233,8 +335,16 @@
             progressBar: document.getElementById('progressBar'), progressPercent: document.getElementById('progressPercent'),
             progressText: document.getElementById('progressText'), actionButtons: document.getElementById('actionButtons'),
             btnDownloadVideo: document.getElementById('btnDownloadVideo'), btnDownloadPDF: document.getElementById('btnDownloadPDF'),
-            btnViewPDF: document.getElementById('btnViewPDF')
+            btnViewPDF: document.getElementById('btnViewPDF'),
+            // NUEVOS ELEMENTOS DEL MODAL DE INFORMACIÓN
+            btnModelInfo: document.getElementById('btnModelInfo'),
+            modelInfoModal: document.getElementById('modelInfoModal'),
+            btnCloseModelInfo: document.getElementById('btnCloseModelInfo')
         };
+
+        // --- APERTURA/CIERRE DE MODAL DE INFORMACIÓN ---
+        els.btnModelInfo.onclick = () => els.modelInfoModal.classList.replace('hidden', 'flex');
+        els.btnCloseModelInfo.onclick = () => els.modelInfoModal.classList.replace('flex', 'hidden');
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -323,6 +433,22 @@
                 selectedFile = dt.files[0];
                 fileNameDisplay.textContent = selectedFile.name;
                 return;
+            }
+
+            const url = dt.getData('text/uri-list') || dt.getData('text/plain');
+            if (url) {
+                fileNameDisplay.textContent = "Importando imagen web...";
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    let filename = url.split('/').pop().split('?')[0];
+                    if (!filename || !filename.includes('.')) filename = 'INTEL_WEB_IMPORT.jpg';
+                    selectedFile = new File([blob], filename, { type: blob.type });
+                    fileNameDisplay.textContent = selectedFile.name;
+                } catch (error) {
+                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor bloquea la extracción.");
+                    fileNameDisplay.textContent = "Error al importar";
+                }
             }
         }, false);
         
@@ -478,7 +604,7 @@
         // MOTOR LOCAL EDGE (ONNXRUNTIME) - 640x640 + LETTERBOXING
         // =========================================================================
 
-        const INPUT_SIZE = 640; // VOLVEMOS AL TAMAÑO ORIGINAL PARA MÁXIMA PRECISIÓN
+        const INPUT_SIZE = 640; 
         
         async function initONNXSession() {
             if (!sessionOrt) {
@@ -568,7 +694,6 @@
             }
         }
 
-        // --- SISTEMA MATEMÁTICO DE RE-ESCALADO TRAS EL LETTERBOXING ---
         function extraerCajasRaw(outputData, ratio, padX, padY, confThreshold) {
             const numDetections = outputData.length / 6; 
             let cajas = [];
@@ -578,7 +703,6 @@
                 const score = outputData[offset + 4];
                 if (score < confThreshold) continue;
 
-                // Deshacer el Padding y el Escalado
                 const x1 = (outputData[offset] - padX) / ratio;
                 const y1 = (outputData[offset + 1] - padY) / ratio;
                 const x2 = (outputData[offset + 2] - padX) / ratio;
@@ -647,7 +771,6 @@
                     tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     
-                    // LETTERBOXING
                     const ratio = Math.min(INPUT_SIZE / img.width, INPUT_SIZE / img.height);
                     const drawW = img.width * ratio;
                     const drawH = img.height * ratio;
@@ -715,7 +838,6 @@
                     const tracker = new TacticalTracker(canvas.width, canvas.height, 10); 
                     let totalContados = 0;
 
-                    // LETTERBOX MATH (Se calcula una vez por vídeo)
                     const ratio = Math.min(INPUT_SIZE / video.videoWidth, INPUT_SIZE / video.videoHeight);
                     const drawW = video.videoWidth * ratio;
                     const drawH = video.videoHeight * ratio;
@@ -733,7 +855,6 @@
                             video.currentTime = tiempoActual;
                             await new Promise(r => { video.onseeked = r; }); 
                             
-                            // APLICAR LETTERBOXING FÍSICO AL CANVAS TEMPORAL
                             tempCtx.fillStyle = "rgb(114, 114, 114)";
                             tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
                             tempCtx.drawImage(video, padX, padY, drawW, drawH);
@@ -752,7 +873,6 @@
                             
                             const results = await session.run(feeds);
                             
-                            // Extraemos las cajas y deshacemos el Letterbox para que cuadren en la pantalla original
                             let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, ratio, padX, padY, confThreshold);
                             
                             let tracksActuales = tracker.update(cajasRaw);
