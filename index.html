@@ -27,14 +27,7 @@
 
     <style>
         .transition-theme { transition: all 0.3s ease; }
-        .topo-bg {
-            background-color: transparent;
-            background-image: url('./fondo%20topografico.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.15; 
-        }
+        .topo-bg { background-color: transparent; background-image: url('./fondo%20topografico.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.15; }
         .dark .topo-bg { opacity: 0.10; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -478,10 +471,10 @@
         };
 
         // =========================================================================
-        // MOTOR LOCAL EDGE (ONNXRUNTIME) + TRACKING MATEMÁTICO (SORT)
+        // MOTOR LOCAL EDGE (ONNXRUNTIME) + TRACKING DINÁMICO MEJORADO
         // =========================================================================
 
-        const INPUT_SIZE = 416; // Resolución optimizada
+        const INPUT_SIZE = 416; 
         
         async function initONNXSession() {
             if (!sessionOrt) {
@@ -493,20 +486,7 @@
             return sessionOrt;
         }
 
-        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (BASADO EN FÍSICA Y IoU) ---
-        function calcularIoU(box1, box2) {
-            const xA = Math.max(box1[0], box2[0]);
-            const yA = Math.max(box1[1], box2[1]);
-            const xB = Math.min(box1[2], box2[2]);
-            const yB = Math.min(box1[3], box2[3]);
-            const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
-            if (interArea === 0) return 0;
-            const box1Area = (box1[2] - box1[0]) * (box1[3] - box1[1]);
-            const box2Area = (box2[2] - box2[0]) * (box2[3] - box2[1]);
-            return interArea / (box1Area + box2Area - interArea);
-        }
-
-        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (Distancia Euclidiana + Fricción) ---
+        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (Distancia Euclidiana DINÁMICA) ---
         function calcularDistancia(box1, box2) {
             const cx1 = (box1[0] + box1[2]) / 2;
             const cy1 = (box1[1] + box1[3]) / 2;
@@ -516,21 +496,22 @@
         }
 
         class TacticalTracker {
-            constructor(maxPaciencia = 6, maxDist = 80) { // Aumentamos paciencia a 6 frames
+            constructor(canvasWidth, canvasHeight, maxPaciencia = 8) { 
                 this.tracks = [];
                 this.nextId = 1;
                 this.maxPaciencia = maxPaciencia; 
-                this.maxDist = maxDist; // Tolerancia de movimiento en píxeles
+                // CLAVE: El radio de búsqueda ahora es el 25% del tamaño real del vídeo (Ej: ~480px en 1080p)
+                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.25; 
             }
 
             update(detecciones) {
-                // 1. FÍSICA: Predicción de movimiento con Fricción
+                // 1. FÍSICA: Predicción de movimiento
                 this.tracks.forEach(t => {
                     t.box[0] += t.vx; t.box[1] += t.vy;
                     t.box[2] += t.vx; t.box[3] += t.vy;
                     
-                    // Fricción: Reducimos velocidad predicha para que no salga volando durante oclusión
-                    t.vx *= 0.6; t.vy *= 0.6;
+                    // Fricción: Frena la predicción rápido para no perder al sujeto si el dron gira
+                    t.vx *= 0.5; t.vy *= 0.5;
                     t.age += 1;
                 });
 
@@ -561,15 +542,21 @@
                         let track = this.tracks[match.t];
                         let det = detecciones[match.d];
 
+                        let cxOld = (track.lastSeenBox[0] + track.lastSeenBox[2]) / 2;
+                        let cyOld = (track.lastSeenBox[1] + track.lastSeenBox[3]) / 2;
+                        let cxNew = (det[0] + det[2]) / 2;
+                        let cyNew = (det[1] + det[3]) / 2;
+
                         let framesPasados = track.age === 0 ? 1 : track.age;
-                        // Actualizar velocidad con suavizado
-                        track.vx = ((det[0] - track.lastSeenBox[0]) / framesPasados) * 0.4;
-                        track.vy = ((det[1] - track.lastSeenBox[1]) / framesPasados) * 0.4;
+                        
+                        // Actualizar vector de velocidad desde los centros de la caja
+                        track.vx = ((cxNew - cxOld) / framesPasados) * 0.4;
+                        track.vy = ((cyNew - cyOld) / framesPasados) * 0.4;
 
                         track.box = [...det];
                         track.lastSeenBox = [...det];
                         track.score = det[4];
-                        track.age = 0; // Recuperado
+                        track.age = 0; // Recuperado de oclusión
                     }
                 }
 
@@ -655,7 +642,7 @@
                 
                 ctx.fillStyle = colorTáctico;
                 ctx.font = "bold 18px 'JetBrains Mono', monospace";
-                ctx.fillText(`OBJETIVOS ÚNICOS: ${totalCount}`, 30, 43);
+                ctx.fillText(`OBJETIVOS UNICOS: ${totalCount}`, 30, 43);
             }
         }
 
@@ -696,7 +683,7 @@
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
                     let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
-                    dibujarCajas(cajasRaw, ctx, cajasRaw.length); // En imagen estática, el total son los encontrados en ese frame
+                    dibujarCajas(cajasRaw, ctx, cajasRaw.length);
                     
                     resolve();
                 };
@@ -731,15 +718,13 @@
                     
                     const deteccionesGuardadas = {};
                     
-                    // Inicializamos el cerebro de Tracking Táctico
-                    // Le damos paciencia de 3 frames (aprox 1.2 segundos sin ver al sujeto) antes de considerarlo "perdido"
-                    const tracker = new TacticalTracker(3, 0.25); 
+                    // AHORA SÍ: Pasamos el tamaño real del canvas para que el radio de tracking escale perfecto
+                    const tracker = new TacticalTracker(canvas.width, canvas.height, 8); 
                     let totalContados = 0;
 
                     els.progressText.textContent = "INFERENCIA EDGE + TRACKING...";
                     
                     try {
-                        // FASE 1: Cálculo en la sombra y Tracking
                         while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
                             video.currentTime = tiempoActual;
                             await new Promise(r => { video.onseeked = r; }); 
@@ -763,21 +748,17 @@
                             
                             const results = await session.run(feeds);
                             
-                            // Extraemos cajas planas
                             let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
                             
-                            // Aplicamos el Tracker para obtener cajas con ID y predecir oclusiones
+                            // Aplicamos el Tracker (ahora con radio dinámico al tamaño del video real)
                             let tracksActuales = tracker.update(cajasRaw);
-                            
-                            // Guardamos solo los tracks visibles en este frame para no dibujar fantasmas muy evidentes, 
-                            // pero el tracker por debajo los sigue memorizando y calculando su física
                             let tracksVisibles = tracksActuales.filter(t => t.age === 0);
                             
                             deteccionesGuardadas[tiempoActual.toFixed(2)] = tracksVisibles.map(t => ({
                                 box: [...t.box], score: t.score, id: t.id
                             }));
                             
-                            totalContados = tracker.nextId - 1; // Actualiza el máximo recuento de personas únicas
+                            totalContados = tracker.nextId - 1;
 
                             const pct = Math.min(100, Math.round((tiempoActual / duracionTotal) * 100));
                             els.progressBar.style.width = `${pct}%`;
