@@ -206,15 +206,10 @@
 
     <script>
         const NGROK_URL = "https://groundable-unratable-macy.ngrok-free.dev";
-
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
-        
-        let backendReady = false;
-        let pingInterval = null;
-
-        let stopVideoProcessing = false;
-        let sessionOrt = null;
+        let backendReady = false; let pingInterval = null;
+        let stopVideoProcessing = false; let sessionOrt = null;
 
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
@@ -312,7 +307,6 @@
         });
 
         function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-
         ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.add('!border-sar', 'bg-sar/20'), false));
         ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, () => dropZone.classList.remove('!border-sar', 'bg-sar/20'), false));
 
@@ -339,7 +333,7 @@
                     selectedFile = new File([blob], filename, { type: blob.type });
                     fileNameDisplay.textContent = selectedFile.name;
                 } catch (error) {
-                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor bloquea la extracción. Guárdala en tu equipo local y arrástrala.");
+                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor bloquea la extracción.");
                     fileNameDisplay.textContent = "Error al importar";
                 }
             }
@@ -436,9 +430,7 @@
             fd.append('conf', confThreshold);
 
             try {
-                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { 
-                    method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } 
-                });
+                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
                 if(!res.ok) throw new Error();
                 
                 const blob = await res.blob();
@@ -477,7 +469,7 @@
                 };
 
             } catch (e) {
-                alert("Error crítico durante el análisis del feed remoto."); 
+                alert("Error crítico durante el análisis."); 
                 els.placeholder.classList.remove('hidden');
                 setBackendDisconnected();
             } finally { 
@@ -486,8 +478,10 @@
         };
 
         // =========================================================================
-        // MOTOR LOCAL EDGE (ONNXRUNTIME) - OPTIMIZADO BIT A BIT
+        // MOTOR LOCAL EDGE (ONNXRUNTIME) + TRACKING MATEMÁTICO (SORT)
         // =========================================================================
+
+        const INPUT_SIZE = 416; // Resolución optimizada
         
         async function initONNXSession() {
             if (!sessionOrt) {
@@ -495,12 +489,171 @@
                 sessionOrt = await ort.InferenceSession.create('./best_yolo26.onnx', {
                     executionProviders: ['webgpu', 'webgl', 'wasm']
                 });
-                console.log("Modelo Edge cargado exitosamente.");
             }
             return sessionOrt;
         }
 
-        // --- PROCESADO DE IMAGEN ---
+        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (BASADO EN FÍSICA Y IoU) ---
+        function calcularIoU(box1, box2) {
+            const xA = Math.max(box1[0], box2[0]);
+            const yA = Math.max(box1[1], box2[1]);
+            const xB = Math.min(box1[2], box2[2]);
+            const yB = Math.min(box1[3], box2[3]);
+            const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            if (interArea === 0) return 0;
+            const box1Area = (box1[2] - box1[0]) * (box1[3] - box1[1]);
+            const box2Area = (box2[2] - box2[0]) * (box2[3] - box2[1]);
+            return interArea / (box1Area + box2Area - interArea);
+        }
+
+        class TacticalTracker {
+            constructor(maxPaciencia = 4, iouThreshold = 0.25) {
+                this.tracks = [];
+                this.nextId = 1;
+                this.maxPaciencia = maxPaciencia; // Frames que puede desaparecer un objeto antes de ser olvidado (Oclusión)
+                this.iouThreshold = iouThreshold;
+            }
+
+            update(detecciones) { // detecciones: [[x1, y1, x2, y2, score], ...]
+                // 1. FÍSICA: Predecir nueva posición de los objetos ya conocidos basándose en su velocidad previa
+                this.tracks.forEach(t => {
+                    t.box[0] += t.vx; t.box[1] += t.vy;
+                    t.box[2] += t.vx; t.box[3] += t.vy;
+                    t.age += 1;
+                });
+
+                let matchedDetections = new Set();
+                let matchedTracks = new Set();
+                let matches = [];
+
+                // 2. MATEMÁTICAS: Calcular intersección (IoU) entre predicciones y nuevas detecciones reales
+                for (let d = 0; d < detecciones.length; d++) {
+                    for (let t = 0; t < this.tracks.length; t++) {
+                        let iou = calcularIoU(detecciones[d], this.tracks[t].box);
+                        if (iou > this.iouThreshold) {
+                            matches.push({d, t, iou});
+                        }
+                    }
+                }
+                
+                // Ordenar por mejor coincidencia
+                matches.sort((a, b) => b.iou - a.iou);
+
+                // 3. ASIGNACIÓN: Actualizar objetos existentes con nuevos datos
+                for (let match of matches) {
+                    if (!matchedDetections.has(match.d) && !matchedTracks.has(match.t)) {
+                        matchedDetections.add(match.d);
+                        matchedTracks.add(match.t);
+
+                        let track = this.tracks[match.t];
+                        let det = detecciones[match.d];
+
+                        // Calcular nueva velocidad (Media Móvil Exponencial para suavidad)
+                        let framesPasados = track.age === 0 ? 1 : track.age;
+                        let newVx = (det[0] - track.lastSeenBox[0]) / framesPasados;
+                        let newVy = (det[1] - track.lastSeenBox[1]) / framesPasados;
+
+                        track.vx = track.vx * 0.8 + newVx * 0.2; 
+                        track.vy = track.vy * 0.8 + newVy * 0.2;
+
+                        track.box = [...det];
+                        track.lastSeenBox = [...det];
+                        track.score = det[4];
+                        track.age = 0; // Lo hemos vuelto a ver, reseteamos paciencia
+                    }
+                }
+
+                // 4. NUEVOS OBJETIVOS: Si hay detecciones no asignadas, son personas nuevas (Nuevo ID)
+                for (let d = 0; d < detecciones.length; d++) {
+                    if (!matchedDetections.has(d)) {
+                        this.tracks.push({
+                            id: this.nextId++,
+                            box: [...detecciones[d]],
+                            lastSeenBox: [...detecciones[d]],
+                            score: detecciones[d][4],
+                            vx: 0, vy: 0,
+                            age: 0
+                        });
+                    }
+                }
+
+                // 5. LIMPIEZA: Borrar objetos que llevan sin verse más tiempo que el límite de paciencia
+                this.tracks = this.tracks.filter(t => t.age <= this.maxPaciencia);
+                return this.tracks;
+            }
+        }
+
+        // --- FUNCIÓN DE EXTRACCIÓN DE CAJAS DEL TENSOR ONNX ---
+        function extraerCajasRaw(outputData, canvasWidth, canvasHeight, inputSize, confThreshold) {
+            const scaleX = canvasWidth / inputSize;
+            const scaleY = canvasHeight / inputSize;
+            const numDetections = outputData.length / 6; 
+            let cajas = [];
+
+            for (let i = 0; i < numDetections; i++) {
+                const offset = i * 6;
+                const score = outputData[offset + 4];
+                if (score < confThreshold) continue;
+
+                const x1 = outputData[offset] * scaleX;
+                const y1 = outputData[offset + 1] * scaleY;
+                const x2 = outputData[offset + 2] * scaleX;
+                const y2 = outputData[offset + 3] * scaleY;
+
+                if (((x2 - x1) * (y2 - y1)) < 10) continue; // Filtro Anti-Ruido
+                cajas.push([x1, y1, x2, y2, score]);
+            }
+            return cajas;
+        }
+
+        // --- DIBUJADO DE CAJAS (AHORA SOPORTA TRACKING Y RECUENTO) ---
+        function dibujarCajas(cajas, ctx, totalCount = null) {
+            const colorTáctico = "#ff5722"; 
+            ctx.lineWidth = 3;
+            ctx.font = "bold 16px 'JetBrains Mono', monospace";
+
+            for (let obj of cajas) {
+                let x1, y1, x2, y2, score, textoId = "";
+                
+                // Si es un objeto Trackeado (Vídeo)
+                if (obj.id !== undefined) {
+                    [x1, y1, x2, y2] = obj.box;
+                    score = obj.score;
+                    textoId = `[ID:${obj.id}] `;
+                } else {
+                    // Si es una detección Raw (Imagen estática)
+                    [x1, y1, x2, y2, score] = obj;
+                }
+
+                const rectW = x2 - x1; const rectH = y2 - y1;
+
+                ctx.strokeStyle = colorTáctico; 
+                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
+                ctx.beginPath(); ctx.rect(x1, y1, rectW, rectH); ctx.stroke(); ctx.fill();
+
+                ctx.fillStyle = colorTáctico;
+                const text = `${textoId}PER ${(score * 100).toFixed(0)}%`;
+                const textWidth = ctx.measureText(text).width;
+                ctx.fillRect(x1, y1 - 22, textWidth + 10, 22);
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(text, x1 + 5, y1 - 6);
+            }
+
+            // HUD: RECUENTO TÁCTICO DE OBJETIVOS ÚNICOS
+            if (totalCount !== null && totalCount > 0) {
+                ctx.fillStyle = "rgba(11, 15, 25, 0.85)";
+                ctx.fillRect(15, 15, 280, 45);
+                ctx.strokeStyle = colorTáctico;
+                ctx.strokeRect(15, 15, 280, 45);
+                
+                ctx.fillStyle = colorTáctico;
+                ctx.font = "bold 18px 'JetBrains Mono', monospace";
+                ctx.fillText(`OBJETIVOS ÚNICOS: ${totalCount}`, 30, 43);
+            }
+        }
+
+        // --- PROCESADO DE IMAGEN ESTÁTICA ---
         async function procesarImagenLocalEdge(file, confThreshold) {
             const session = await initONNXSession();
             return new Promise((resolve) => {
@@ -509,44 +662,43 @@
                     const canvas = els.canvasSalida;
                     canvas.classList.remove('hidden');
                     const ctx = canvas.getContext('2d');
-                    
                     canvas.width = img.width; canvas.height = img.height;
                     
-                    const inputSize = 416;
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = inputSize; tempCanvas.height = inputSize;
+                    tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    tempCtx.drawImage(img, 0, 0, inputSize, inputSize);
+                    tempCtx.drawImage(img, 0, 0, INPUT_SIZE, INPUT_SIZE);
                     
-                    const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
-                    
-                    // --- OPTIMIZACIÓN 3: Procesado Bit a Bit ---
-                    const area = inputSize * inputSize;
+                    const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
+                    const area = INPUT_SIZE * INPUT_SIZE;
                     const floatData = new Float32Array(area * 3);
-                    const inv255 = 0.003921568627; // Cacheado de la división (1/255)
+                    const inv255 = 0.003921568627;
                     
                     for (let i = 0; i < area; i++) {
-                        const pixelIndex = i << 2; // Desplazamiento de bits (ultra rápido, equiv a i * 4)
-                        floatData[i]            = imgData[pixelIndex] * inv255;     // R
-                        floatData[area + i]     = imgData[pixelIndex + 1] * inv255; // G
-                        floatData[area * 2 + i] = imgData[pixelIndex + 2] * inv255; // B
+                        const pixelIndex = i << 2; 
+                        floatData[i]            = imgData[pixelIndex] * inv255;
+                        floatData[area + i]     = imgData[pixelIndex + 1] * inv255;
+                        floatData[area * 2 + i] = imgData[pixelIndex + 2] * inv255;
                     }
                     
-                    const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
+                    const tensor = new ort.Tensor('float32', floatData, [1, 3, INPUT_SIZE, INPUT_SIZE]);
                     const feeds = {}; feeds[session.inputNames[0]] = tensor;
                     
                     els.progressText.textContent = "EJECUTANDO INFERENCIA EDGE...";
                     const results = await session.run(feeds);
                     
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    dibujarDetecciones(results[session.outputNames[0]].data, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                    
+                    let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
+                    dibujarCajas(cajasRaw, ctx, cajasRaw.length); // En imagen estática, el total son los encontrados en ese frame
+                    
                     resolve();
                 };
                 img.src = URL.createObjectURL(file);
             });
         }
 
-        // --- PROCESADO DE VIDEO ---
+        // --- PROCESADO DE VIDEO CON TRACKING MULTI-OBJETIVO ---
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
@@ -562,9 +714,8 @@
                     const ctx = canvas.getContext('2d');
                     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                     
-                    const inputSize = 416;
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = inputSize; tempCanvas.height = inputSize;
+                    tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     
                     const duracionTotal = video.duration;
@@ -573,19 +724,24 @@
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
-                    els.progressText.textContent = "INFERENCIA EDGE (PRE-CÁLCULO)...";
+                    
+                    // Inicializamos el cerebro de Tracking Táctico
+                    // Le damos paciencia de 3 frames (aprox 1.2 segundos sin ver al sujeto) antes de considerarlo "perdido"
+                    const tracker = new TacticalTracker(3, 0.25); 
+                    let totalContados = 0;
+
+                    els.progressText.textContent = "INFERENCIA EDGE + TRACKING...";
                     
                     try {
-                        // FASE 1: Cálculo en la sombra
+                        // FASE 1: Cálculo en la sombra y Tracking
                         while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
                             video.currentTime = tiempoActual;
                             await new Promise(r => { video.onseeked = r; }); 
                             
-                            tempCtx.drawImage(video, 0, 0, inputSize, inputSize);
-                            const imgData = tempCtx.getImageData(0, 0, inputSize, inputSize).data;
+                            tempCtx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
+                            const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
                             
-                            // --- OPTIMIZACIÓN 3: Procesado Bit a Bit ---
-                            const area = inputSize * inputSize;
+                            const area = INPUT_SIZE * INPUT_SIZE;
                             const floatData = new Float32Array(area * 3);
                             const inv255 = 0.003921568627;
                             
@@ -596,12 +752,27 @@
                                 floatData[area * 2 + i] = imgData[pixelIndex + 2] * inv255;
                             }
                             
-                            const tensor = new ort.Tensor('float32', floatData, [1, 3, inputSize, inputSize]);
+                            const tensor = new ort.Tensor('float32', floatData, [1, 3, INPUT_SIZE, INPUT_SIZE]);
                             const feeds = {}; feeds[session.inputNames[0]] = tensor;
                             
                             const results = await session.run(feeds);
-                            deteccionesGuardadas[tiempoActual.toFixed(2)] = new Float32Array(results[session.outputNames[0]].data);
                             
+                            // Extraemos cajas planas
+                            let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
+                            
+                            // Aplicamos el Tracker para obtener cajas con ID y predecir oclusiones
+                            let tracksActuales = tracker.update(cajasRaw);
+                            
+                            // Guardamos solo los tracks visibles en este frame para no dibujar fantasmas muy evidentes, 
+                            // pero el tracker por debajo los sigue memorizando y calculando su física
+                            let tracksVisibles = tracksActuales.filter(t => t.age === 0);
+                            
+                            deteccionesGuardadas[tiempoActual.toFixed(2)] = tracksVisibles.map(t => ({
+                                box: [...t.box], score: t.score, id: t.id
+                            }));
+                            
+                            totalContados = tracker.nextId - 1; // Actualiza el máximo recuento de personas únicas
+
                             const pct = Math.min(100, Math.round((tiempoActual / duracionTotal) * 100));
                             els.progressBar.style.width = `${pct}%`;
                             els.progressPercent.textContent = `${pct}%`;
@@ -611,7 +782,7 @@
                         
                         if (stopVideoProcessing) { resolve(); return; }
                         
-                        // CONFIGURACIÓN DE CONTROLES DEL REPRODUCTOR
+                        // FASE 2: Reproducción fluida y renderizado
                         els.customVideoControls.classList.remove('hidden');
                         els.playbackSlider.max = duracionTotal;
                         els.timeTotal.textContent = formatTime(duracionTotal);
@@ -619,22 +790,13 @@
 
                         let isDraggingSlider = false;
 
-                        // Botón de Play/Pause
                         els.btnPlayPause.onclick = () => {
-                            if (video.paused) {
-                                video.play();
-                                els.playPauseIcon.classList.replace('ph-play', 'ph-pause');
-                            } else {
-                                video.pause();
-                                els.playPauseIcon.classList.replace('ph-pause', 'ph-play');
-                            }
+                            if (video.paused) { video.play(); els.playPauseIcon.classList.replace('ph-play', 'ph-pause'); } 
+                            else { video.pause(); els.playPauseIcon.classList.replace('ph-pause', 'ph-play'); }
                         };
-
-                        // Hacer clic en el canvas hace Play/Pause
                         els.canvasSalida.onclick = () => els.btnPlayPause.click();
                         els.canvasSalida.style.cursor = 'pointer';
 
-                        // Eventos del slider
                         els.playbackSlider.oninput = (e) => {
                             isDraggingSlider = true;
                             video.currentTime = e.target.value;
@@ -642,33 +804,28 @@
                         };
                         els.playbackSlider.onchange = () => { isDraggingSlider = false; };
 
-                        resolve(); // Ocultamos barra de carga general
+                        resolve(); 
                         
-                        // FASE 2: Reproducción
                         video.currentTime = 0;
                         await new Promise(r => { video.onseeked = r; });
                         await video.play();
                         
                         function renderFrame() {
                             if (stopVideoProcessing) return;
-                            
-                            // Siempre dibujamos para que, al pausar y arrastrar el slider, el fotograma se actualice
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                             
                             const t = video.currentTime;
                             const tAproximado = (Math.round(t * fpsInferencia) / fpsInferencia).toFixed(2);
                             
-                            const output = deteccionesGuardadas[tAproximado];
-                            if (output) {
-                                dibujarDetecciones(output, ctx, canvas.width, canvas.height, inputSize, confThreshold);
+                            const objetosTrackeados = deteccionesGuardadas[tAproximado];
+                            if (objetosTrackeados) {
+                                dibujarCajas(objetosTrackeados, ctx, totalContados);
                             }
 
-                            // Actualizar la barra de progreso si no la está arrastrando el usuario
                             if (!isDraggingSlider) {
                                 els.playbackSlider.value = t;
                                 els.timeCurrent.textContent = formatTime(t);
                             }
-                            
                             requestAnimationFrame(renderFrame);
                         }
                         renderFrame();
@@ -680,45 +837,8 @@
             });
         }
 
-        function dibujarDetecciones(outputData, ctx, canvasWidth, canvasHeight, inputSize, confThreshold) {
-            const nombreClase = "PERSONA";
-            const colorTáctico = "#ff5722"; 
-            const scaleX = canvasWidth / inputSize;
-            const scaleY = canvasHeight / inputSize;
-            const numDetections = outputData.length / 6; 
-
-            ctx.lineWidth = 3;
-            ctx.font = "bold 16px 'JetBrains Mono', monospace";
-
-            for (let i = 0; i < numDetections; i++) {
-                const offset = i * 6;
-                const x1 = outputData[offset]; const y1 = outputData[offset + 1];
-                const x2 = outputData[offset + 2]; const y2 = outputData[offset + 3];
-                const score = outputData[offset + 4];
-                
-                if (score < confThreshold) continue;
-
-                const rectX = x1 * scaleX; const rectY = y1 * scaleY;
-                const rectW = (x2 - x1) * scaleX; const rectH = (y2 - y1) * scaleY;
-
-                if ((rectW * rectH) < 10) continue; 
-
-                ctx.strokeStyle = colorTáctico; 
-                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
-                ctx.beginPath(); ctx.rect(rectX, rectY, rectW, rectH); ctx.stroke(); ctx.fill();
-
-                ctx.fillStyle = colorTáctico;
-                const text = `${nombreClase} ${(score * 100).toFixed(0)}%`;
-                const textWidth = ctx.measureText(text).width;
-                ctx.fillRect(rectX, rectY - 22, textWidth + 10, 22);
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.fillText(text, rectX + 5, rectY - 6);
-            }
-        }
-
         // =========================================================================
-        // ESTADÍSTICAS Y TELEMETRÍA
+        // ESTADÍSTICAS Y TELEMETRÍA NGROK
         // =========================================================================
         
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
@@ -731,10 +851,7 @@
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
                 Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { renderTable(results.data); renderCharts(results.data); } });
-            } catch (error) { 
-                els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; 
-                setBackendDisconnected();
-            }
+            } catch (error) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; }
         }
 
         function renderTable(data) {
