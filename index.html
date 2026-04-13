@@ -93,7 +93,9 @@
                     <p class="text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
                     <p id="fileName" class="text-[10px] mt-2 text-sar font-bold truncate max-w-full"></p>
                 </div>
-                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">ANALIZAR SEÑAL</button>
+                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                    ANALIZAR SEÑAL
+                </button>
             </section>
         </aside>
 
@@ -202,7 +204,19 @@
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
         let backendReady = false; let pingInterval = null;
-        let stopVideoProcessing = false; let sessionOrt = null;
+        
+        let stopVideoProcessing = false; 
+        let sessionOrt = null;
+        let streamController = null;
+        let currentSessionId = "";
+
+        // Generador de Tokens de Sesión Únicos
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
 
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
@@ -332,9 +346,17 @@
             }
         }, false);
         
-        async function listenToProgressStream() {
+        // --- STREAMING BLINDADO DE TELEMETRÍA ---
+        async function listenToProgressStream(sessionId) {
+            if (streamController) streamController.abort();
+            streamController = new AbortController();
+
             try {
-                const response = await fetch(`${NGROK_URL}/stream_progreso/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+                const response = await fetch(`${NGROK_URL}/stream_progreso/?session_id=${sessionId}`, { 
+                    headers: { 'ngrok-skip-browser-warning': 'true' },
+                    signal: streamController.signal 
+                });
+                
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
 
@@ -352,30 +374,40 @@
                         } catch(e) { } 
                     }
                 }
-            } catch (error) { setBackendDisconnected(); }
+            } catch (error) { 
+                if (error.name !== 'AbortError') setBackendDisconnected(); 
+            }
         }
 
-        // --- CONTROL DE PROCESAMIENTO ---
+        // --- CONTROL DE PROCESAMIENTO (DOBLE PROTECCIÓN) ---
         els.btnProcess.onclick = async () => {
+            if (els.btnProcess.disabled) return; 
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
+            
             const modeloSeleccionado = document.getElementById('modelSelect').value;
             const confThreshold = parseFloat(document.getElementById('confSlider').value);
             const isVideo = selectedFile.type.startsWith('video');
 
+            els.btnProcess.disabled = true;
+            els.btnProcess.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> PROCESANDO...';
+
             stopVideoProcessing = true; 
             els.customVideoControls.classList.add('hidden'); 
+            currentSessionId = generateUUID(); // Generamos un DNI de sesión nuevo
 
-            if (modeloSeleccionado === 'YOLO26-LOCAL') {
-                els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
-                els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
-                els.canvasSalida.classList.add('hidden');
-                els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
-                
-                els.progressBar.style.width = "0%";
-                els.progressPercent.textContent = "0%";
-                els.progressText.textContent = "PREPARANDO MOTOR EDGE...";
+            await new Promise(r => setTimeout(r, 100)); // Micropausa purificadora de RAM
 
-                try {
+            try {
+                if (modeloSeleccionado === 'YOLO26-LOCAL') {
+                    els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
+                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+                    els.canvasSalida.classList.add('hidden');
+                    els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
+                    
+                    els.progressBar.style.width = "0%";
+                    els.progressPercent.textContent = "0%";
+                    els.progressText.textContent = "PREPARANDO MOTOR EDGE...";
+
                     if (isVideo) {
                         await procesarVideoLocalEdge(selectedFile, confThreshold);
                     } else {
@@ -393,80 +425,74 @@
                         enlace.download = "SAR_Local_" + selectedFile.name; 
                         enlace.click();
                     };
-                } catch (error) {
-                    console.error("Error Edge:", error);
-                    alert("Error en motor Local Edge: " + error.message);
-                    els.placeholder.classList.remove('hidden');
-                } finally {
-                    els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
+                } 
+                else {
+                    if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia Colab primero o usa YOLO26 LOCAL.");
+
+                    els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
+                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+                    els.canvasSalida.classList.add('hidden');
+                    els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
+                    
+                    els.progressBar.style.width = "0%";
+                    els.progressPercent.textContent = "0%";
+                    els.progressText.textContent = "INICIALIZANDO NODO...";
+
+                    listenToProgressStream(currentSessionId); // Empezar a escuchar nuestra sesión privada
+
+                    const fd = new FormData();
+                    fd.append('file', selectedFile);
+                    fd.append('modelo', modeloSeleccionado);
+                    fd.append('conf', confThreshold);
+                    fd.append('session_id', currentSessionId); // Enviar DNI al servidor
+
+                    const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
+                    if(!res.ok) throw new Error();
+                    
+                    const blob = await res.blob();
+                    const bUrl = URL.createObjectURL(blob);
+
+                    if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
+                    else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
+                    
+                    els.actionButtons.classList.remove('hidden');
+                    els.btnDownloadPDF.style.display = 'flex'; 
+                    els.btnViewPDF.style.display = 'flex';
+                    els.btnDownloadVideo.style.display = 'flex';
+                    
+                    els.btnDownloadVideo.onclick = () => {
+                        const a = document.createElement('a'); a.href = bUrl; a.download = "SAR_Feed_" + selectedFile.name; a.click();
+                    };
+                    
+                    els.btnDownloadPDF.onclick = async () => {
+                        try {
+                            const response = await fetch(`${NGROK_URL}/descargar_informe/?session_id=${currentSessionId}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+                            if (!response.ok) throw new Error();
+                            const pdfBlob = await response.blob();
+                            const fileUrl = URL.createObjectURL(pdfBlob);
+                            const a = document.createElement('a'); a.href = fileUrl; a.download = "SAR_Reporte_Tactico.pdf"; a.click();
+                        } catch (e) { alert("Error al descargar informe."); setBackendDisconnected(); }
+                    };
+
+                    els.btnViewPDF.onclick = async () => {
+                        try {
+                            const response = await fetch(`${NGROK_URL}/descargar_informe/?session_id=${currentSessionId}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+                            if (!response.ok) throw new Error();
+                            const pdfBlob = await response.blob();
+                            const fileUrl = URL.createObjectURL(pdfBlob);
+                            window.open(fileUrl, '_blank');
+                        } catch (e) { alert("Error al abrir informe."); setBackendDisconnected(); }
+                    };
                 }
-                return; 
-            }
-
-            // NODO C2 (NGROK/COLAB)
-            if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia Colab primero o usa YOLO26 LOCAL.");
-
-            els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
-            els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
-            els.canvasSalida.classList.add('hidden');
-            els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
-            
-            els.progressBar.style.width = "0%";
-            els.progressPercent.textContent = "0%";
-            els.progressText.textContent = "INICIALIZANDO NODO...";
-
-            listenToProgressStream();
-
-            const fd = new FormData();
-            fd.append('file', selectedFile);
-            fd.append('modelo', modeloSeleccionado);
-            fd.append('conf', confThreshold);
-
-            try {
-                const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
-                if(!res.ok) throw new Error();
-                
-                const blob = await res.blob();
-                const bUrl = URL.createObjectURL(blob);
-
-                if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
-                else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
-                
-                els.actionButtons.classList.remove('hidden');
-                els.btnDownloadPDF.style.display = 'flex'; 
-                els.btnViewPDF.style.display = 'flex';
-                els.btnDownloadVideo.style.display = 'flex';
-                
-                els.btnDownloadVideo.onclick = () => {
-                    const a = document.createElement('a'); a.href = bUrl; a.download = "SAR_Feed_" + selectedFile.name; a.click();
-                };
-                
-                els.btnDownloadPDF.onclick = async () => {
-                    try {
-                        const response = await fetch(`${NGROK_URL}/descargar_informe/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-                        if (!response.ok) throw new Error();
-                        const pdfBlob = await response.blob();
-                        const fileUrl = URL.createObjectURL(pdfBlob);
-                        const a = document.createElement('a'); a.href = fileUrl; a.download = "SAR_Reporte_Tactico.pdf"; a.click();
-                    } catch (e) { alert("Error al descargar informe."); setBackendDisconnected(); }
-                };
-
-                els.btnViewPDF.onclick = async () => {
-                    try {
-                        const response = await fetch(`${NGROK_URL}/descargar_informe/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-                        if (!response.ok) throw new Error();
-                        const pdfBlob = await response.blob();
-                        const fileUrl = URL.createObjectURL(pdfBlob);
-                        window.open(fileUrl, '_blank');
-                    } catch (e) { alert("Error al abrir informe."); setBackendDisconnected(); }
-                };
-
             } catch (e) {
-                alert("Error crítico durante el análisis."); 
+                alert("Error crítico durante el análisis del feed remoto."); 
                 els.placeholder.classList.remove('hidden');
-                setBackendDisconnected();
+                if(modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected();
             } finally { 
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
+                els.btnProcess.disabled = false;
+                els.btnProcess.innerHTML = 'ANALIZAR SEÑAL';
+                if (streamController) streamController.abort(); // Matamos stream limpio
             }
         };
 
@@ -486,7 +512,6 @@
             return sessionOrt;
         }
 
-        // --- SISTEMA MATEMÁTICO DE TRACKING Y ASIGNACIÓN DE ID (Distancia Euclidiana DINÁMICA) ---
         function calcularDistancia(box1, box2) {
             const cx1 = (box1[0] + box1[2]) / 2;
             const cy1 = (box1[1] + box1[3]) / 2;
@@ -500,17 +525,13 @@
                 this.tracks = [];
                 this.nextId = 1;
                 this.maxPaciencia = maxPaciencia; 
-                // CLAVE: El radio de búsqueda ahora es el 25% del tamaño real del vídeo (Ej: ~480px en 1080p)
                 this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.25; 
             }
 
             update(detecciones) {
-                // 1. FÍSICA: Predicción de movimiento
                 this.tracks.forEach(t => {
                     t.box[0] += t.vx; t.box[1] += t.vy;
                     t.box[2] += t.vx; t.box[3] += t.vy;
-                    
-                    // Fricción: Frena la predicción rápido para no perder al sujeto si el dron gira
                     t.vx *= 0.5; t.vy *= 0.5;
                     t.age += 1;
                 });
@@ -519,21 +540,17 @@
                 let matchedTracks = new Set();
                 let matches = [];
 
-                // 2. MATEMÁTICAS: Buscar coincidencia por distancia Euclidiana
                 for (let d = 0; d < detecciones.length; d++) {
                     for (let t = 0; t < this.tracks.length; t++) {
                         let dist = calcularDistancia(detecciones[d], this.tracks[t].box);
                         if (dist < this.maxDist) {
-                            // Puntuación inversa: menor distancia = mayor puntuación
                             matches.push({d, t, score: 1 / (dist + 1)});
                         }
                     }
                 }
                 
-                // Ordenar por mejor coincidencia
                 matches.sort((a, b) => b.score - a.score);
 
-                // 3. ASIGNACIÓN
                 for (let match of matches) {
                     if (!matchedDetections.has(match.d) && !matchedTracks.has(match.t)) {
                         matchedDetections.add(match.d);
@@ -549,18 +566,16 @@
 
                         let framesPasados = track.age === 0 ? 1 : track.age;
                         
-                        // Actualizar vector de velocidad desde los centros de la caja
                         track.vx = ((cxNew - cxOld) / framesPasados) * 0.4;
                         track.vy = ((cyNew - cyOld) / framesPasados) * 0.4;
 
                         track.box = [...det];
                         track.lastSeenBox = [...det];
                         track.score = det[4];
-                        track.age = 0; // Recuperado de oclusión
+                        track.age = 0; 
                     }
                 }
 
-                // 4. NUEVOS OBJETIVOS
                 for (let d = 0; d < detecciones.length; d++) {
                     if (!matchedDetections.has(d)) {
                         this.tracks.push({
@@ -570,13 +585,11 @@
                     }
                 }
 
-                // 5. LIMPIEZA
                 this.tracks = this.tracks.filter(t => t.age <= this.maxPaciencia);
                 return this.tracks;
             }
         }
 
-        // --- FUNCIÓN DE EXTRACCIÓN DE CAJAS DEL TENSOR ONNX ---
         function extraerCajasRaw(outputData, canvasWidth, canvasHeight, inputSize, confThreshold) {
             const scaleX = canvasWidth / inputSize;
             const scaleY = canvasHeight / inputSize;
@@ -593,13 +606,12 @@
                 const x2 = outputData[offset + 2] * scaleX;
                 const y2 = outputData[offset + 3] * scaleY;
 
-                if (((x2 - x1) * (y2 - y1)) < 10) continue; // Filtro Anti-Ruido
+                if (((x2 - x1) * (y2 - y1)) < 10) continue;
                 cajas.push([x1, y1, x2, y2, score]);
             }
             return cajas;
         }
 
-        // --- DIBUJADO DE CAJAS (AHORA SOPORTA TRACKING Y RECUENTO) ---
         function dibujarCajas(cajas, ctx, totalCount = null) {
             const colorTáctico = "#ff5722"; 
             ctx.lineWidth = 3;
@@ -608,13 +620,11 @@
             for (let obj of cajas) {
                 let x1, y1, x2, y2, score, textoId = "";
                 
-                // Si es un objeto Trackeado (Vídeo)
                 if (obj.id !== undefined) {
                     [x1, y1, x2, y2] = obj.box;
                     score = obj.score;
                     textoId = `[ID:${obj.id}] `;
                 } else {
-                    // Si es una detección Raw (Imagen estática)
                     [x1, y1, x2, y2, score] = obj;
                 }
 
@@ -633,7 +643,6 @@
                 ctx.fillText(text, x1 + 5, y1 - 6);
             }
 
-            // HUD: RECUENTO TÁCTICO DE OBJETIVOS ÚNICOS
             if (totalCount !== null && totalCount > 0) {
                 ctx.fillStyle = "rgba(11, 15, 25, 0.85)";
                 ctx.fillRect(15, 15, 280, 45);
@@ -646,7 +655,6 @@
             }
         }
 
-        // --- PROCESADO DE IMAGEN ESTÁTICA ---
         async function procesarImagenLocalEdge(file, confThreshold) {
             const session = await initONNXSession();
             return new Promise((resolve) => {
@@ -691,7 +699,6 @@
             });
         }
 
-        // --- PROCESADO DE VIDEO CON TRACKING MULTI-OBJETIVO ---
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
@@ -717,8 +724,6 @@
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
-                    
-                    // AHORA SÍ: Pasamos el tamaño real del canvas para que el radio de tracking escale perfecto
                     const tracker = new TacticalTracker(canvas.width, canvas.height, 8); 
                     let totalContados = 0;
 
@@ -750,7 +755,6 @@
                             
                             let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, canvas.width, canvas.height, INPUT_SIZE, confThreshold);
                             
-                            // Aplicamos el Tracker (ahora con radio dinámico al tamaño del video real)
                             let tracksActuales = tracker.update(cajasRaw);
                             let tracksVisibles = tracksActuales.filter(t => t.age === 0);
                             
@@ -769,7 +773,6 @@
                         
                         if (stopVideoProcessing) { resolve(); return; }
                         
-                        // FASE 2: Reproducción fluida y renderizado
                         els.customVideoControls.classList.remove('hidden');
                         els.playbackSlider.max = duracionTotal;
                         els.timeTotal.textContent = formatTime(duracionTotal);
