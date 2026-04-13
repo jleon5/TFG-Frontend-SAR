@@ -210,7 +210,6 @@
         let streamController = null;
         let currentSessionId = "";
 
-        // Generador de Tokens de Sesión Únicos
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -243,7 +242,6 @@
             return `${m}:${s}`;
         }
 
-        // --- SISTEMA NGROK / PING ---
         function setBackendDisconnected() {
             if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
                 els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
@@ -278,7 +276,6 @@
         
         startPing(); checkBackend();
 
-        // --- TEMA Y UI ---
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             htmlDoc.classList.add('dark'); els.themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
         }
@@ -291,7 +288,6 @@
 
         setInterval(() => document.getElementById('clock').textContent = new Date().toISOString().split('T')[1].split('.')[0] + ' UTC', 1000);
 
-        // --- MANEJO DE ARCHIVOS ---
         let selectedFile = null;
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileName');
@@ -328,25 +324,8 @@
                 fileNameDisplay.textContent = selectedFile.name;
                 return;
             }
-
-            const url = dt.getData('text/uri-list') || dt.getData('text/plain');
-            if (url) {
-                fileNameDisplay.textContent = "Importando imagen web...";
-                try {
-                    const response = await fetch(url);
-                    const blob = await response.blob();
-                    let filename = url.split('/').pop().split('?')[0];
-                    if (!filename || !filename.includes('.')) filename = 'INTEL_WEB_IMPORT.jpg';
-                    selectedFile = new File([blob], filename, { type: blob.type });
-                    fileNameDisplay.textContent = selectedFile.name;
-                } catch (error) {
-                    alert("ALERTA DE SEGURIDAD (CORS):\\n\\nEl servidor bloquea la extracción.");
-                    fileNameDisplay.textContent = "Error al importar";
-                }
-            }
         }, false);
         
-        // --- STREAMING BLINDADO DE TELEMETRÍA ---
         async function listenToProgressStream(sessionId) {
             if (streamController) streamController.abort();
             streamController = new AbortController();
@@ -379,7 +358,6 @@
             }
         }
 
-        // --- CONTROL DE PROCESAMIENTO (DOBLE PROTECCIÓN) ---
         els.btnProcess.onclick = async () => {
             if (els.btnProcess.disabled) return; 
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
@@ -393,9 +371,9 @@
 
             stopVideoProcessing = true; 
             els.customVideoControls.classList.add('hidden'); 
-            currentSessionId = generateUUID(); // Generamos un DNI de sesión nuevo
+            currentSessionId = generateUUID(); 
 
-            await new Promise(r => setTimeout(r, 100)); // Micropausa purificadora de RAM
+            await new Promise(r => setTimeout(r, 100)); 
 
             try {
                 if (modeloSeleccionado === 'YOLO26-LOCAL') {
@@ -438,13 +416,13 @@
                     els.progressPercent.textContent = "0%";
                     els.progressText.textContent = "INICIALIZANDO NODO...";
 
-                    listenToProgressStream(currentSessionId); // Empezar a escuchar nuestra sesión privada
+                    listenToProgressStream(currentSessionId); 
 
                     const fd = new FormData();
                     fd.append('file', selectedFile);
                     fd.append('modelo', modeloSeleccionado);
                     fd.append('conf', confThreshold);
-                    fd.append('session_id', currentSessionId); // Enviar DNI al servidor
+                    fd.append('session_id', currentSessionId); 
 
                     const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
                     if(!res.ok) throw new Error();
@@ -492,7 +470,7 @@
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
                 els.btnProcess.disabled = false;
                 els.btnProcess.innerHTML = 'ANALIZAR SEÑAL';
-                if (streamController) streamController.abort(); // Matamos stream limpio
+                if (streamController) streamController.abort(); 
             }
         };
 
@@ -521,11 +499,11 @@
         }
 
         class TacticalTracker {
-            constructor(canvasWidth, canvasHeight, maxPaciencia = 8) { 
+            constructor(canvasWidth, canvasHeight, maxPaciencia = 10) { 
                 this.tracks = [];
                 this.nextId = 1;
                 this.maxPaciencia = maxPaciencia; 
-                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.25; 
+                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.35; // Aumentado a 35%
             }
 
             update(detecciones) {
@@ -720,12 +698,21 @@
                     
                     const duracionTotal = video.duration;
                     let tiempoActual = 0;
-                    const fpsInferencia = 2.5; 
+                    
+                    // VELOCIDAD EXTREMA: Bajamos a 1.5 FPS para aligerar la CPU local masivamente
+                    const fpsInferencia = 1.5; 
                     const salto = 1 / fpsInferencia; 
                     
                     const deteccionesGuardadas = {};
-                    const tracker = new TacticalTracker(canvas.width, canvas.height, 8); 
+                    
+                    // Aumentamos paciencia (Si va a 1.5fps, 10 frames de paciencia = 6 segundos de oclusión tolerada)
+                    const tracker = new TacticalTracker(canvas.width, canvas.height, 10); 
                     let totalContados = 0;
+
+                    // OPTIMIZACIÓN DE RAM CRÍTICA: Asignar matriz fuera del bucle
+                    const area = INPUT_SIZE * INPUT_SIZE;
+                    const floatData = new Float32Array(area * 3);
+                    const inv255 = 0.003921568627;
 
                     els.progressText.textContent = "INFERENCIA EDGE + TRACKING...";
                     
@@ -736,10 +723,6 @@
                             
                             tempCtx.drawImage(video, 0, 0, INPUT_SIZE, INPUT_SIZE);
                             const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
-                            
-                            const area = INPUT_SIZE * INPUT_SIZE;
-                            const floatData = new Float32Array(area * 3);
-                            const inv255 = 0.003921568627;
                             
                             for (let i = 0; i < area; i++) {
                                 const pixelIndex = i << 2; 
@@ -828,7 +811,7 @@
         }
 
         // =========================================================================
-        // ESTADÍSTICAS Y TELEMETRÍA NGROK
+        // ESTADÍSTICAS Y TELEMETRÍA
         // =========================================================================
         
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
