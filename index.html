@@ -35,7 +35,7 @@
     </style>
 </head>
 
-<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-screen flex flex-col overflow-hidden transition-theme">
+<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-[100dvh] flex flex-col overflow-hidden transition-theme">
     
     <header class="h-14 md:h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-3 md:px-6 shrink-0 z-50 transition-theme">
         <div class="flex items-center gap-2 md:gap-3">
@@ -59,7 +59,7 @@
 
     <main class="flex flex-col md:flex-row flex-1 overflow-hidden z-10">
         
-        <aside class="w-full md:w-80 h-[45vh] md:h-full border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto shrink-0 transition-theme relative z-20 order-2 md:order-1">
+        <aside class="w-full md:w-80 h-[45vh] md:h-full border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-4 pb-10 md:p-6 md:pb-6 flex flex-col gap-4 md:gap-6 overflow-y-auto shrink-0 transition-theme relative z-20 order-2 md:order-1">
             
             <section class="space-y-2 md:space-y-3">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Estado del Nodo C2 (GPU)</label>
@@ -92,7 +92,7 @@
                 </div>
             </section>
 
-            <section class="flex-1 flex flex-col gap-3 md:gap-4">
+            <section class="flex-1 flex flex-col gap-3 md:gap-4 justify-end">
                 <div id="dropZone" class="flex-1 min-h-[80px] md:min-h-0 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-2 md:p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
                     <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
                     <i class="ph ph-upload-simple text-2xl md:text-4xl mb-1 md:mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
@@ -139,7 +139,7 @@
                 </div>
             </div>
 
-            <div id="actionButtons" class="absolute bottom-4 right-4 md:bottom-12 md:right-12 flex flex-col md:flex-row gap-2 md:gap-4 hidden z-20 origin-bottom-right scale-[0.8] md:scale-100">
+            <div id="actionButtons" class="absolute bottom-8 right-4 md:bottom-12 md:right-12 flex flex-col md:flex-row gap-2 md:gap-4 hidden z-20 origin-bottom-right scale-[0.85] md:scale-100">
                 <button id="btnViewPDF" class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
                     <i class="ph-bold ph-eye text-xl md:text-2xl"></i>
                     <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER INFORME</span>
@@ -490,7 +490,7 @@
             const isVideo = selectedFile.type.startsWith('video');
 
             els.btnProcess.disabled = true;
-            els.btnProcess.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> PROCESANDO...';
+            els.btnProcess.innerHTML = '<i class="ph ph-spinner animate-spin text-xl md:text-2xl"></i> PROCESANDO...';
 
             stopVideoProcessing = true; 
             els.customVideoControls.classList.add('hidden'); 
@@ -714,6 +714,7 @@
         function dibujarCajas(cajas, ctx, totalCount = null) {
             const colorTáctico = "#ff5722"; 
             ctx.lineWidth = 3;
+            // Reducimos un poco la fuente en móvil si quieres, aunque al escalar con canvas se ve bien
             ctx.font = "bold 16px 'JetBrains Mono', monospace";
 
             for (let obj of cajas) {
