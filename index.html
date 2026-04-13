@@ -37,43 +37,43 @@
 
 <body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-screen flex flex-col overflow-hidden transition-theme">
     
-    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-50 transition-theme">
-        <div class="flex items-center gap-3">
-            <i class="ph ph-crosshair text-sar text-3xl animate-pulse drop-shadow-[0_0_8px_rgba(255,87,34,0.8)]"></i>
-            <h1 class="font-mono font-bold tracking-tighter text-lg leading-none">SAR AI SYSTEM <span class="text-sar text-[10px] ml-2 opacity-50">V2.0</span></h1>
+    <header class="h-14 md:h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-3 md:px-6 shrink-0 z-50 transition-theme">
+        <div class="flex items-center gap-2 md:gap-3">
+            <i class="ph ph-crosshair text-sar text-2xl md:text-3xl animate-pulse drop-shadow-[0_0_8px_rgba(255,87,34,0.8)]"></i>
+            <h1 class="font-mono font-bold tracking-tighter text-sm md:text-lg leading-none truncate">SAR AI <span class="hidden sm:inline">SYSTEM</span> <span class="text-sar text-[8px] md:text-[10px] ml-1 md:ml-2 opacity-50">V2.0</span></h1>
         </div>
         
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 md:gap-4">
             <div class="text-right hidden sm:block mr-2 border-r border-slate-200 dark:border-slate-700 pr-4">
                 <p class="text-[10px] font-mono opacity-50 uppercase">Tiempo Op.</p>
                 <p id="clock" class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 transition-theme">00:00:00 UTC</p>
             </div>
-            <button id="btnOpenStats" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sar/10 hover:text-sar transition-all text-xs font-mono">
-                <i class="ph ph-chart-line-up text-lg"></i> INTELIGENCIA
+            <button id="btnOpenStats" class="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sar/10 hover:text-sar transition-all text-[10px] md:text-xs font-mono">
+                <i class="ph ph-chart-line-up text-base md:text-lg"></i> <span class="hidden sm:inline">INTELIGENCIA</span>
             </button>
-            <button id="themeToggle" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:rotate-12 transition-all">
-                <i id="themeIcon" class="ph ph-moon-stars text-xl"></i>
+            <button id="themeToggle" class="p-1.5 md:p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:rotate-12 transition-all">
+                <i id="themeIcon" class="ph ph-moon-stars text-lg md:text-xl"></i>
             </button>
         </div>
     </header>
 
-    <main class="flex flex-1 overflow-hidden z-10">
-        <aside class="w-80 border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-6 flex flex-col gap-6 overflow-y-auto shrink-0 transition-theme relative z-20">
+    <main class="flex flex-col md:flex-row flex-1 overflow-hidden z-10">
+        
+        <aside class="w-full md:w-80 h-[45vh] md:h-full border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto shrink-0 transition-theme relative z-20 order-2 md:order-1">
             
-            <section class="space-y-3">
+            <section class="space-y-2 md:space-y-3">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Estado del Nodo C2 (GPU)</label>
-                <div id="nodeStatusBg" class="w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500">
-                    <div class="relative flex h-3 w-3">
+                <div id="nodeStatusBg" class="w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500">
+                    <div class="relative flex h-2 w-2 md:h-3 md:w-3">
                       <span id="nodeStatusPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span id="nodeStatusDot" class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                      <span id="nodeStatusDot" class="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500"></span>
                     </div>
-                    <span id="nodeStatusText" class="text-xs font-mono font-bold text-red-500 tracking-wider">BUSCANDO SEÑAL...</span>
+                    <span id="nodeStatusText" class="text-[10px] md:text-xs font-mono font-bold text-red-500 tracking-wider">BUSCANDO SEÑAL...</span>
                 </div>
             </section>
             
-            <section class="space-y-4">
+            <section class="space-y-3 md:space-y-4">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Configuración</label>
-                
                 <div class="flex gap-2">
                     <select id="modelSelect" class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none transition-theme cursor-pointer">
                         <option value="YOLO26-LOCAL" class="text-sar font-bold">YOLO26</option>
@@ -86,115 +86,113 @@
                         <i class="ph-bold ph-info text-lg"></i>
                     </button>
                 </div>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
+                <div class="space-y-1 md:space-y-2">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
                     <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35" class="w-full accent-sar cursor-pointer">
                 </div>
             </section>
 
-            <section class="flex-1 flex flex-col gap-4">
-                <div id="dropZone" class="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
+            <section class="flex-1 flex flex-col gap-3 md:gap-4">
+                <div id="dropZone" class="flex-1 min-h-[80px] md:min-h-0 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-2 md:p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
                     <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
-                    <i class="ph ph-upload-simple text-4xl mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
-                    <p class="text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
-                    <p id="fileName" class="text-[10px] mt-2 text-sar font-bold truncate max-w-full"></p>
+                    <i class="ph ph-upload-simple text-2xl md:text-4xl mb-1 md:mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
+                    <p class="text-[9px] md:text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
+                    <p id="fileName" class="text-[9px] md:text-[10px] mt-1 md:mt-2 text-sar font-bold truncate max-w-full px-2"></p>
                 </div>
-                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-3 md:py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2 text-xs md:text-base">
                     ANALIZAR SEÑAL
                 </button>
             </section>
         </aside>
 
-        <section class="flex-1 p-8 flex items-center justify-center relative overflow-hidden bg-slate-100/50 dark:bg-[#080b13] transition-theme">
+        <section class="flex-1 p-2 md:p-8 flex items-center justify-center relative overflow-hidden bg-slate-100/50 dark:bg-[#080b13] transition-theme order-1 md:order-2">
             
             <div class="absolute inset-0 topo-bg pointer-events-none z-0"></div>
 
-            <div id="resultContainer" class="relative z-10 max-w-full max-h-full flex items-center justify-center rounded-2xl overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[400px] min-w-[300px]">
+            <div id="resultContainer" class="relative z-10 w-full h-full md:max-w-full md:max-h-full flex items-center justify-center rounded-xl md:rounded-2xl overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[250px] md:min-h-[400px]">
                 
-                <div id="placeholder" class="flex flex-col items-center gap-4 p-20 opacity-20"><i class="ph ph-radar text-8xl animate-pulse"></i><p class="font-mono text-sm tracking-widest">SISTEMA LISTO</p></div>
+                <div id="placeholder" class="flex flex-col items-center gap-2 md:gap-4 p-10 md:p-20 opacity-20"><i class="ph ph-radar text-6xl md:text-8xl animate-pulse"></i><p class="font-mono text-xs md:text-sm tracking-widest text-center">SISTEMA LISTO</p></div>
                 
-                <img id="resultImage" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" src="">
-                <video id="resultVideo" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50" controls autoplay loop muted></video>
+                <img id="resultImage" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full" src="">
+                <video id="resultVideo" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full" controls autoplay loop muted></video>
                 
-                <canvas id="canvasSalida" class="hidden max-w-full max-h-[80vh] object-contain shadow-2xl shadow-black/50"></canvas>
+                <canvas id="canvasSalida" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full"></canvas>
                 
-                <div id="customVideoControls" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-11/12 max-w-sm bg-white/30 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-lg p-2 flex items-center gap-3 hidden z-30 shadow-lg transition-theme">
-                    <button id="btnPlayPause" class="text-slate-800 dark:text-white hover:text-sar dark:hover:text-sar transition-colors outline-none focus:outline-none">
-                        <i id="playPauseIcon" class="ph-fill ph-pause text-2xl drop-shadow-md"></i>
+                <div id="customVideoControls" class="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 w-[95%] md:w-11/12 max-w-sm bg-white/30 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-lg p-1.5 md:p-2 flex items-center gap-2 md:gap-3 hidden z-30 shadow-lg transition-theme">
+                    <button id="btnPlayPause" class="text-slate-800 dark:text-white hover:text-sar dark:hover:text-sar transition-colors outline-none focus:outline-none ml-1">
+                        <i id="playPauseIcon" class="ph-fill ph-pause text-xl md:text-2xl drop-shadow-md"></i>
                     </button>
-                    <div class="flex-1 flex items-center gap-2">
-                        <span id="timeCurrent" class="text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-7 text-right drop-shadow-md transition-colors">00:00</span>
+                    <div class="flex-1 flex items-center gap-1 md:gap-2">
+                        <span id="timeCurrent" class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 text-right drop-shadow-md transition-colors">00:00</span>
                         <input type="range" id="playbackSlider" value="0" min="0" max="100" step="0.1" class="w-full h-1 bg-slate-400/50 dark:bg-slate-500/50 rounded-lg appearance-none cursor-pointer accent-sar hover:accent-sar-dark outline-none transition-colors">
-                        <span id="timeTotal" class="text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-7 drop-shadow-md transition-colors">00:00</span>
+                        <span id="timeTotal" class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 drop-shadow-md transition-colors">00:00</span>
                     </div>
                 </div>
 
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-4 backdrop-blur-md z-40">
-                    <i class="ph ph-radar text-6xl text-sar animate-spin mb-2"></i>
-                    <p id="progressText" class="font-mono text-sm tracking-widest text-slate-700 dark:text-slate-300 font-bold uppercase transition-colors">Sincronizando feed...</p>
-                    
-                    <div class="w-64 h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner transition-colors">
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-3 md:gap-4 backdrop-blur-md z-40 p-4 text-center">
+                    <i class="ph ph-radar text-5xl md:text-6xl text-sar animate-spin mb-1 md:mb-2"></i>
+                    <p id="progressText" class="font-mono text-xs md:text-sm tracking-widest text-slate-700 dark:text-slate-300 font-bold uppercase transition-colors">Sincronizando feed...</p>
+                    <div class="w-full max-w-[200px] md:max-w-xs h-2 md:h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner transition-colors">
                         <div id="progressBar" class="h-full bg-sar transition-all duration-500 ease-out" style="width: 0%"></div>
                     </div>
-                    <p id="progressPercent" class="font-mono text-xs text-sar font-bold">0%</p>
+                    <p id="progressPercent" class="font-mono text-[10px] md:text-xs text-sar font-bold">0%</p>
                 </div>
             </div>
 
-            <div id="actionButtons" class="absolute bottom-12 right-12 flex gap-4 hidden z-20">
-                <button id="btnViewPDF" class="p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative">
-                    <i class="ph-bold ph-eye text-2xl"></i>
-                    <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER INFORME</span>
+            <div id="actionButtons" class="absolute bottom-4 right-4 md:bottom-12 md:right-12 flex flex-col md:flex-row gap-2 md:gap-4 hidden z-20 origin-bottom-right scale-[0.8] md:scale-100">
+                <button id="btnViewPDF" class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+                    <i class="ph-bold ph-eye text-xl md:text-2xl"></i>
+                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER INFORME</span>
                 </button>
-                <button id="btnDownloadPDF" class="p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative">
-                    <i class="ph-bold ph-file-pdf text-2xl"></i>
-                    <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">DESCARGAR INFORME</span>
+                <button id="btnDownloadPDF" class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+                    <i class="ph-bold ph-file-pdf text-xl md:text-2xl"></i>
+                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">DESCARGAR INFORME</span>
                 </button>
-                <button id="btnDownloadVideo" class="p-4 bg-green-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group relative">
-                    <i class="ph-bold ph-download-simple text-2xl"></i>
-                    <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">FEED DETECCIONES</span>
+                <button id="btnDownloadVideo" class="p-3 md:p-4 bg-green-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+                    <i class="ph-bold ph-download-simple text-xl md:text-2xl"></i>
+                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">FEED DETECCIONES</span>
                 </button>
             </div>
         </section>
     </main>
 
-    <div id="statsModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white dark:bg-panel w-full max-w-6xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
-            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
-                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200"><i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA</h2>
-                <button id="btnCloseStats" class="p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i class="ph ph-x text-2xl"></i></button>
+    <div id="statsModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-panel w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+            <div class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
+                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate"><i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA</h2>
+                <button id="btnCloseStats" class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i class="ph ph-x text-xl md:text-2xl"></i></button>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark min-h-0 transition-theme">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
-                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
-                        <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center shrink-0">Rendimiento (FPS) por Misión Video</h3>
-                        <div class="relative h-48 w-full"><canvas id="fpsChart"></canvas></div>
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark min-h-0 transition-theme">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 shrink-0">
+                    <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
+                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">Rendimiento (FPS) por Misión Video</h3>
+                        <div class="relative h-32 md:h-48 w-full"><canvas id="fpsChart"></canvas></div>
                     </div>
-                    <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
-                        <h3 class="font-mono text-xs text-slate-500 mb-2 uppercase text-center shrink-0">Carga Térmica CPU (%)</h3>
-                        <div class="text-center text-[10px] font-mono mb-2 text-slate-400 shrink-0">
+                    <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
+                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-1 md:mb-2 uppercase text-center shrink-0">Carga Térmica CPU (%)</h3>
+                        <div class="text-center text-[8px] md:text-[10px] font-mono mb-1 md:mb-2 text-slate-400 shrink-0">
                             <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
                             <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
                         </div>
-                        <div class="relative h-44 w-full"><canvas id="cpuChart"></canvas></div>
+                        <div class="relative h-32 md:h-44 w-full"><canvas id="cpuChart"></canvas></div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0 flex flex-col transition-theme">
-                    <h3 class="font-mono text-xs text-slate-500 mb-4 uppercase text-center shrink-0">Comparativa: Tiempo de Procesamiento Medio por Modelo (Segundos)</h3>
-                    <div class="relative h-24 w-full"><canvas id="modelChart"></canvas></div>
+                <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0 flex flex-col transition-theme">
+                    <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">Comparativa: Tiempo de Procesamiento Medio (Segundos)</h3>
+                    <div class="relative h-20 md:h-24 w-full"><canvas id="modelChart"></canvas></div>
                 </div>
 
                 <div class="bg-white dark:bg-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 transition-theme">
-                    <div class="bg-slate-50 dark:bg-slate-900 p-3 border-b border-slate-200 dark:border-slate-800 transition-theme">
-                        <h3 class="font-mono text-xs text-slate-500 uppercase tracking-widest"><i class="ph ph-database"></i> Registro Completo de Operaciones</h3>
+                    <div class="bg-slate-50 dark:bg-slate-900 p-2 md:p-3 border-b border-slate-200 dark:border-slate-800 transition-theme">
+                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 uppercase tracking-widest"><i class="ph ph-database"></i> Registro Completo</h3>
                     </div>
-                    <div class="overflow-x-auto max-h-64">
-                        <table class="w-full text-left text-xs font-mono border-collapse whitespace-nowrap">
+                    <div class="overflow-x-auto max-h-48 md:max-h-64">
+                        <table class="w-full text-left text-[10px] md:text-xs font-mono border-collapse whitespace-nowrap">
                             <thead class="sticky top-0 bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-theme">
                                 <tr>
-                                    <th class="p-3">FECHA Y HORA</th><th class="p-3">OPERACIÓN</th><th class="p-3">RED NEURONAL</th><th class="p-3">FPS</th><th class="p-3">LATENCIA</th><th class="p-3">CPU</th>
+                                    <th class="p-2 md:p-3">FECHA/HORA</th><th class="p-2 md:p-3">OPERACIÓN</th><th class="p-2 md:p-3">MODELO</th><th class="p-2 md:p-3">FPS</th><th class="p-2 md:p-3">LATENCIA</th><th class="p-2 md:p-3">CPU</th>
                                 </tr>
                             </thead>
                             <tbody id="statsTableBody" class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300 transition-theme">
@@ -206,93 +204,93 @@
         </div>
     </div>
 
-    <div id="modelInfoModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white dark:bg-panel w-full max-w-4xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+    <div id="modelInfoModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-panel w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
             
-            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
-                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                    <i class="ph ph-cpu text-sar text-xl"></i> ESPECIFICACIONES DE REDES NEURONALES
+            <div class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
+                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate">
+                    <i class="ph ph-cpu text-sar text-lg md:text-xl"></i> ESPECIFICACIONES REDES NEURONALES
                 </h2>
-                <button id="btnCloseModelInfo" class="p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
-                    <i class="ph ph-x text-2xl"></i>
+                <button id="btnCloseModelInfo" class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
+                    <i class="ph ph-x text-xl md:text-2xl"></i>
                 </button>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100 dark:bg-bgdark transition-theme">
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark transition-theme">
                 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-sar rounded-r-xl shadow-sm p-5 relative overflow-hidden">
-                    <i class="ph-duotone ph-laptop absolute -right-4 -bottom-4 text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-sar rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                    <i class="ph-duotone ph-laptop absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 bg-sar text-white text-[10px] font-mono font-bold rounded">EDGE (LOCAL)</span>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO26</h3>
+                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-sar text-white text-[8px] md:text-[10px] font-mono font-bold rounded">EDGE (LOCAL)</span>
+                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO26</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">La nueva generación de modelos de visión de la serie YOLO. Diseñado con un enfoque estratégico <span class="italic font-bold">"edge-first"</span> (primero periféricos), está optimizado para alta velocidad y bajo consumo de recursos. Su ejecución nativa en el navegador mediante <span class="font-mono text-sar font-bold">WebGPU/WASM</span> permite operar sin conexión a internet, garantizando máxima privacidad táctica y disponibilidad inmediata en misiones SAR (Búsqueda y Salvamento) aisladas.</p>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La nueva generación de modelos de visión de la serie YOLO. Diseñado con un enfoque estratégico <span class="italic font-bold">"edge-first"</span> (primero periféricos), está optimizado para alta velocidad y bajo consumo de recursos. Su ejecución nativa en el navegador mediante <span class="font-mono text-sar font-bold">WebGPU/WASM</span> permite operar sin conexión a internet, garantizando máxima privacidad táctica y disponibilidad inmediata en misiones SAR (Búsqueda y Salvamento) aisladas.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Enero 2026 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> YOLO Edge-First ONNX (FP32)</div>
-                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: 100% Privacidad, Cero latencia de red, Ideal para despliegue en zonas sin cobertura.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: 100% Privacidad, Cero latencia de red, Ideal para despliegue en zonas sin cobertura.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
-                    <i class="ph-duotone ph-cloud-check absolute -right-4 -bottom-4 text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                    <i class="ph-duotone ph-cloud-check absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 bg-blue-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v12</h3>
+                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v12</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">La vanguardia actual en detección de objetos. Implementa mecanismos de atención espacial avanzados (Area Attention) que permiten enfocar el cómputo en zonas críticas de la imagen. Ideal para diferenciar objetivos minúsculos en entornos con mucho ruido visual o camuflaje natural.</p>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La vanguardia actual en detección de objetos. Implementa mecanismos de atención espacial avanzados (Area Attention) que permiten enfocar el cómputo en zonas críticas de la imagen. Ideal para diferenciar objetivos minúsculos en entornos con mucho ruido visual o camuflaje natural.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Febrero 2025 (Tencent)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Area Attention / CNN Mejorada</div>
-                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Precisión extrema en objetivos minúsculos. Perfecto para drones a gran altitud.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Precisión extrema en objetos minúsculos. Perfecto para drones a gran altitud.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 bg-blue-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v8</h3>
+                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v8</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">El estándar de oro de la industria. Extremadamente robusto, estable y equilibrado en términos de latencia y precisión. Su arquitectura libre de anclajes (Anchor-Free) le otorga una gran versatilidad para detectar personas en diferentes posturas o ángulos inesperados durante vuelos rápidos.</p>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">El estándar de oro de la industria. Extremadamente robusto, estable y equilibrado en términos de latencia y precisión. Su arquitectura libre de anclajes (Anchor-Free) le otorga una gran versatilidad para detectar personas en diferentes posturas o ángulos inesperados durante vuelos rápidos.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Enero 2023 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Free CNN</div>
-                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Balance perfecto entre velocidad de inferencia en servidor y precisión constante.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Balance perfecto entre velocidad de inferencia en servidor y precisión constante.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-slate-400 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-slate-400 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 bg-slate-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">YOLO v5</h3>
+                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-slate-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v5</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">Arquitectura clásica y altamente eficiente en consumo de recursos del nodo. A pesar de ser más antiguo, su extrema ligereza permite procesar feeds de vídeo a altísimos FPS en servidores con hardware limitado, garantizando una respuesta fluida en streamings de larga duración.</p>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">Arquitectura clásica y altamente eficiente en consumo de recursos del nodo. A pesar de ser más antiguo, su extrema ligereza permite procesar feeds de vídeo a altísimos FPS en servidores con hardware limitado, garantizando una respuesta fluida en streamings de larga duración.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Junio 2020 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Based CNN (Legacy)</div>
-                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Inferencia ultrarrápida. Ideal para servidores C2 de baja potencia (CPU).</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Inferencia ultrarrápida. Ideal para servidores C2 de baja potencia (CPU).</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-purple-500 rounded-r-xl shadow-sm p-5 relative overflow-hidden">
+                <div class="bg-white dark:bg-slate-900 border-l-4 border-purple-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-2 py-1 bg-purple-500 text-white text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-slate-200">RT-DETR</h3>
+                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-purple-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">RT-DETR</h3>
                         </div>
-                        <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">La revolución de los Transformadores Visuales (ViT) aplicada al análisis de vídeo en tiempo real. A diferencia de las redes convolucionales tradicionales (CNN), evalúa el contexto global de la imagen en cada frame, haciéndolo virtualmente inmune a cortes bruscos, cambios de luz y oclusiones masivas.</p>
-                        <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La revolución de los Transformadores Visuales (ViT) aplicada al análisis de vídeo en tiempo real. A diferencia de las redes convolucionales tradicionales (CNN), evalúa el contexto global de la imagen en cada frame, haciéndolo virtualmente inmune a cortes bruscos, cambios de luz y oclusiones masivas.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Abril 2023 (Baidu)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Vision Transformer (ViT)</div>
-                            <div class="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">✓ FORTALEZAS: Comprensión global del contexto de la imagen. Altamente resistente a interferencias.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Comprensión global del contexto de la imagen. Altamente resistente a interferencias.</div>
                         </div>
                     </div>
                 </div>
@@ -353,10 +351,10 @@
 
         function setBackendDisconnected() {
             if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
-                els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
-                els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-red-500";
+                els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500";
+                els.nodeStatusDot.className = "relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500";
                 els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75";
-                els.nodeStatusText.className = "text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
+                els.nodeStatusText.className = "text-[10px] md:text-xs font-mono font-bold text-red-600 dark:text-red-500 tracking-wider";
                 els.nodeStatusText.textContent = "NODO APAGADO";
                 backendReady = false;
             }
@@ -371,10 +369,10 @@
                 const response = await fetch(`${NGROK_URL}/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
                 if (response.ok) {
                     if (!backendReady) {
-                        els.nodeStatusBg.className = "w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-center gap-3 transition-colors duration-500";
-                        els.nodeStatusDot.className = "relative inline-flex rounded-full h-3 w-3 bg-emerald-500";
+                        els.nodeStatusBg.className = "w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500";
+                        els.nodeStatusDot.className = "relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-emerald-500";
                         els.nodeStatusPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 hidden";
-                        els.nodeStatusText.className = "text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
+                        els.nodeStatusText.className = "text-[10px] md:text-xs font-mono font-bold text-emerald-600 dark:text-emerald-500 tracking-wider";
                         els.nodeStatusText.textContent = "ENLACE ESTABLECIDO";
                         backendReady = true;
                     }
