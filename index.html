@@ -728,8 +728,21 @@
 
         function dibujarCajas(cajas, ctx, totalCount = null) {
             const colorTáctico = "#ff5722"; 
-            ctx.lineWidth = 3;
-            ctx.font = "bold 16px 'JetBrains Mono', monospace";
+            
+            // --- ESCALADO DINÁMICO (Para resoluciones locales 4K) ---
+            const cW = ctx.canvas.width;
+            const cH = ctx.canvas.height;
+            const dimensionMenor = Math.min(cW, cH);
+            // Usamos 800px como "resolución base"
+            const s = Math.max(1, dimensionMenor / 800); 
+
+            const lineWidth = Math.max(2, Math.round(3 * s));
+            const fontSize = Math.round(16 * s);
+            const padX = Math.round(6 * s);
+            const padY = Math.round(6 * s);
+
+            ctx.lineWidth = lineWidth;
+            ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
 
             for (let obj of cajas) {
                 let x1, y1, x2, y2, score, textoId = "";
@@ -744,28 +757,40 @@
 
                 const rectW = x2 - x1; const rectH = y2 - y1;
 
+                // Caja Exterior Naranja SAR
                 ctx.strokeStyle = colorTáctico; 
-                ctx.fillStyle = "rgba(255, 87, 34, 0.2)"; 
+                ctx.fillStyle = "rgba(255, 87, 34, 0.15)"; 
                 ctx.beginPath(); ctx.rect(x1, y1, rectW, rectH); ctx.stroke(); ctx.fill();
 
-                ctx.fillStyle = colorTáctico;
+                // Configurar texto
                 const text = `${textoId}PER ${(score * 100).toFixed(0)}%`;
                 const textWidth = ctx.measureText(text).width;
-                ctx.fillRect(x1, y1 - 22, textWidth + 10, 22);
+                const boxH = fontSize + (padY * 2);
                 
+                // Fondo Negro Puro
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(x1, y1 - boxH, textWidth + (padX * 2), boxH);
+                
+                // Texto Blanco Puro
                 ctx.fillStyle = "#ffffff";
-                ctx.fillText(text, x1 + 5, y1 - 6);
+                ctx.fillText(text, x1 + padX, y1 - Math.round(padY * 1.2));
             }
 
             if (totalCount !== null && totalCount > 0) {
-                ctx.fillStyle = "rgba(11, 15, 25, 0.85)";
-                ctx.fillRect(15, 15, 280, 45);
-                ctx.strokeStyle = colorTáctico;
-                ctx.strokeRect(15, 15, 280, 45);
+                const hudPad = Math.round(15 * s);
+                const hudW = Math.round(300 * s);
+                const hudH = Math.round(55 * s);
+                const hudFontSize = Math.round(18 * s);
                 
-                ctx.fillStyle = colorTáctico;
-                ctx.font = "bold 18px 'JetBrains Mono', monospace";
-                ctx.fillText(`OBJETIVOS UNICOS: ${totalCount}`, 30, 43);
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(hudPad, hudPad, hudW, hudH);
+                
+                ctx.strokeStyle = colorTáctico;
+                ctx.strokeRect(hudPad, hudPad, hudW, hudH);
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.font = `bold ${hudFontSize}px 'JetBrains Mono', monospace`;
+                ctx.fillText(`OBJETIVOS UNICOS: ${totalCount}`, hudPad + Math.round(15 * s), hudPad + Math.round(35 * s));
             }
         }
 
