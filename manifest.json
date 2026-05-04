@@ -1,0 +1,37 @@
+{
+  "name": "SAR AI SYSTEM C2 PRO",
+  "short_name": "SAR C2",
+  "description": "Sistema de Mando y Control distribuido para detección automática de personas en misiones SAR mediante visión por computador e IA.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0f19",
+  "theme_color": "#ff5722",
+  "lang": "es",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Análisis Local (Offline)",
+      "short_name": "EDGE",
+      "description": "Abrir en modo Edge Computing sin conexión",
+      "url": "./index.html",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

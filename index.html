@@ -1,14 +1,35 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>TERMINAL SAR // C2 PRO</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- PWA: Manifest -->
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- PWA: Theme & status bar -->
+    <meta name="theme-color" content="#ff5722">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- PWA: iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SAR C2">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+
+    <!-- PWA: descripción para motores y stores -->
+    <meta name="description"
+        content="Sistema C2 distribuido para detección automática de personas en misiones SAR mediante visión por computador e IA.">
+    <meta name="application-name" content="SAR AI SYSTEM C2 PRO">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
@@ -26,176 +47,283 @@
     </script>
 
     <style>
-        .transition-theme { transition: all 0.3s ease; }
-        .topo-bg { background-color: transparent; background-image: url('./fondo%20topografico.jpg'); background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.15; }
-        .dark .topo-bg { opacity: 0.10; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #ff5722; border-radius: 10px; }
+        .transition-theme {
+            transition: all 0.3s ease;
+        }
+
+        .topo-bg {
+            background-color: transparent;
+            background-image: url('./fondo%20topografico.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.15;
+        }
+
+        .dark .topo-bg {
+            opacity: 0.10;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #ff5722;
+            border-radius: 10px;
+        }
     </style>
 </head>
 
-<body class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-[100dvh] flex flex-col overflow-hidden transition-theme">
-    
-    <header class="h-14 md:h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-3 md:px-6 shrink-0 z-50 transition-theme">
+<body
+    class="bg-slate-100 dark:bg-bgdark text-slate-800 dark:text-slate-300 h-[100dvh] flex flex-col overflow-hidden transition-theme">
+
+    <header
+        class="h-14 md:h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-panel/80 backdrop-blur-md flex items-center justify-between px-3 md:px-6 shrink-0 z-50 transition-theme">
         <div class="flex items-center gap-2 md:gap-3">
-            <i class="ph ph-crosshair text-sar text-2xl md:text-3xl animate-pulse drop-shadow-[0_0_8px_rgba(255,87,34,0.8)]"></i>
-            <h1 class="font-mono font-bold tracking-tighter text-sm md:text-lg leading-none truncate">SAR AI <span class="hidden sm:inline">SYSTEM</span> <span class="text-sar text-[8px] md:text-[10px] ml-1 md:ml-2 opacity-50">V2.0</span></h1>
+            <i
+                class="ph ph-crosshair text-sar text-2xl md:text-3xl animate-pulse drop-shadow-[0_0_8px_rgba(255,87,34,0.8)]"></i>
+            <h1 class="font-mono font-bold tracking-tighter text-sm md:text-lg leading-none truncate">SAR AI <span
+                    class="hidden sm:inline">SYSTEM</span> <span
+                    class="text-sar text-[8px] md:text-[10px] ml-1 md:ml-2 opacity-50">V2.0</span></h1>
         </div>
-        
+
         <div class="flex items-center gap-2 md:gap-4">
             <div class="text-right hidden sm:block mr-2 border-r border-slate-200 dark:border-slate-700 pr-4">
                 <p class="text-[10px] font-mono opacity-50 uppercase">Tiempo Op.</p>
-                <p id="clock" class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 transition-theme">00:00:00 UTC</p>
+                <p id="clock" class="text-xs font-mono font-bold text-slate-700 dark:text-slate-300 transition-theme">
+                    00:00:00 UTC</p>
             </div>
-            <button id="btnOpenStats" class="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sar/10 hover:text-sar transition-all text-[10px] md:text-xs font-mono">
-                <i class="ph ph-chart-line-up text-base md:text-lg"></i> <span class="hidden sm:inline">INTELIGENCIA</span>
+            <button id="btnOpenStats"
+                class="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sar/10 hover:text-sar transition-all text-[10px] md:text-xs font-mono">
+                <i class="ph ph-chart-line-up text-base md:text-lg"></i> <span
+                    class="hidden sm:inline">INTELIGENCIA</span>
             </button>
-            <button id="themeToggle" class="p-1.5 md:p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:rotate-12 transition-all">
+            <button id="themeToggle"
+                class="p-1.5 md:p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:rotate-12 transition-all">
                 <i id="themeIcon" class="ph ph-moon-stars text-lg md:text-xl"></i>
             </button>
         </div>
     </header>
 
     <main class="flex flex-col md:flex-row flex-1 overflow-hidden z-10">
-        
-        <aside class="w-full md:w-80 h-[45vh] md:h-full border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-4 pb-10 md:p-6 md:pb-6 flex flex-col gap-4 md:gap-6 overflow-y-auto shrink-0 transition-theme relative z-20 order-2 md:order-1">
-            
+
+        <aside
+            class="w-full md:w-80 h-[45vh] md:h-full border-t md:border-t-0 md:border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-panel/50 backdrop-blur-sm p-4 pb-10 md:p-6 md:pb-6 flex flex-col gap-4 md:gap-6 overflow-y-auto shrink-0 transition-theme relative z-20 order-2 md:order-1">
+
             <section class="space-y-2 md:space-y-3">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Estado del Nodo C2 (GPU)</label>
-                <div id="nodeStatusBg" class="w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500">
+                <div id="nodeStatusBg"
+                    class="w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500">
                     <div class="relative flex h-2 w-2 md:h-3 md:w-3">
-                      <span id="nodeStatusPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span id="nodeStatusDot" class="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500"></span>
+                        <span id="nodeStatusPing"
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span id="nodeStatusDot"
+                            class="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500"></span>
                     </div>
-                    <span id="nodeStatusText" class="text-[10px] md:text-xs font-mono font-bold text-red-500 tracking-wider">BUSCANDO SEÑAL...</span>
+                    <span id="nodeStatusText"
+                        class="text-[10px] md:text-xs font-mono font-bold text-red-500 tracking-wider">BUSCANDO
+                        SEÑAL...</span>
                 </div>
             </section>
-            
+
             <section class="space-y-3 md:space-y-4">
                 <label class="text-[10px] font-mono font-bold uppercase text-slate-500">Configuración</label>
                 <div class="flex gap-2">
-                    <select id="modelSelect" class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none transition-theme cursor-pointer">
+                    <select id="modelSelect"
+                        class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs outline-none transition-theme cursor-pointer">
                         <option value="YOLO26-LOCAL" class="text-sar font-bold">YOLO26</option>
                         <option value="YOLO v12">YOLO v12</option>
                         <option value="YOLO v8">YOLO v8</option>
                         <option value="YOLO v5">YOLO v5</option>
-                        <option value="RT-DETR">RT-DETR</option> 
+                        <option value="RT-DETR">RT-DETR</option>
                     </select>
-                    <button id="btnModelInfo" class="shrink-0 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-lg hover:text-sar dark:hover:text-sar hover:border-sar dark:hover:border-sar transition-all outline-none" title="Ver especificaciones de modelos">
+                    <button id="btnModelInfo"
+                        class="shrink-0 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-lg hover:text-sar dark:hover:text-sar hover:border-sar dark:hover:border-sar transition-all outline-none"
+                        title="Ver especificaciones de modelos">
                         <i class="ph-bold ph-info text-lg"></i>
                     </button>
                 </div>
                 <div class="space-y-1 md:space-y-2">
-                    <div class="flex justify-between text-[10px] md:text-xs font-mono"><span>Confianza</span><span id="confValue" class="text-sar">0.35</span></div>
-                    <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35" class="w-full accent-sar cursor-pointer">
+                    <div class="flex justify-between text-[10px] md:text-xs font-mono"><span>Confianza</span><span
+                            id="confValue" class="text-sar">0.35</span></div>
+                    <input type="range" id="confSlider" min="0.1" max="0.9" step="0.05" value="0.35"
+                        class="w-full accent-sar cursor-pointer">
                 </div>
             </section>
 
             <section class="flex-1 flex flex-col gap-3 md:gap-4 justify-end">
-                <div id="dropZone" class="flex-1 min-h-[80px] md:min-h-0 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-2 md:p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
+                <div id="dropZone"
+                    class="flex-1 min-h-[80px] md:min-h-0 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center p-2 md:p-4 hover:border-sar transition-colors cursor-pointer group bg-white/30 dark:bg-black/20">
                     <input type="file" id="fileInput" class="hidden" accept="image/*,video/*">
-                    <i class="ph ph-upload-simple text-2xl md:text-4xl mb-1 md:mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
-                    <p class="text-[9px] md:text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video</p>
-                    <p id="fileName" class="text-[9px] md:text-[10px] mt-1 md:mt-2 text-sar font-bold truncate max-w-full px-2"></p>
+                    <i
+                        class="ph ph-upload-simple text-2xl md:text-4xl mb-1 md:mb-2 text-slate-400 group-hover:text-sar transition-all"></i>
+                    <p class="text-[9px] md:text-[10px] text-center uppercase font-mono opacity-60">Cargar Imagen/Video
+                    </p>
+                    <p id="fileName"
+                        class="text-[9px] md:text-[10px] mt-1 md:mt-2 text-sar font-bold truncate max-w-full px-2"></p>
                 </div>
-                <button id="btnProcess" class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-3 md:py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2 text-xs md:text-base">
+                <button id="btnProcess"
+                    class="w-full bg-sar hover:bg-sar-dark text-white font-mono font-bold py-3 md:py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:bg-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2 text-xs md:text-base">
                     ANALIZAR SEÑAL
                 </button>
             </section>
         </aside>
 
-        <section class="flex-1 p-2 md:p-8 flex items-center justify-center relative overflow-hidden bg-slate-100/50 dark:bg-[#080b13] transition-theme order-1 md:order-2">
-            
+        <section
+            class="flex-1 p-2 md:p-8 flex items-center justify-center relative overflow-hidden bg-slate-100/50 dark:bg-[#080b13] transition-theme order-1 md:order-2">
+
             <div class="absolute inset-0 topo-bg pointer-events-none z-0"></div>
 
-            <div id="resultContainer" class="relative z-10 w-full h-full md:max-w-full md:max-h-full flex items-center justify-center rounded-xl md:rounded-2xl overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[250px] md:min-h-[400px]">
-                
-                <div id="placeholder" class="flex flex-col items-center gap-2 md:gap-4 p-10 md:p-20 opacity-20"><i class="ph ph-radar text-6xl md:text-8xl animate-pulse"></i><p class="font-mono text-xs md:text-sm tracking-widest text-center">SISTEMA LISTO</p></div>
-                
-                <img id="resultImage" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full" src="">
-                <video id="resultVideo" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full" controls autoplay loop muted></video>
-                
-                <canvas id="canvasSalida" class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full"></canvas>
-                
-                <div id="customVideoControls" class="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 w-[95%] md:w-11/12 max-w-sm bg-white/30 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-lg p-1.5 md:p-2 flex items-center gap-2 md:gap-3 hidden z-30 shadow-lg transition-theme">
-                    <button id="btnPlayPause" class="text-slate-800 dark:text-white hover:text-sar dark:hover:text-sar transition-colors outline-none focus:outline-none ml-1">
+            <div id="resultContainer"
+                class="relative z-10 w-full h-full md:max-w-full md:max-h-full flex items-center justify-center rounded-xl md:rounded-2xl overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl transition-all duration-700 min-h-[250px] md:min-h-[400px]">
+
+                <div id="placeholder" class="flex flex-col items-center gap-2 md:gap-4 p-10 md:p-20 opacity-20"><i
+                        class="ph ph-radar text-6xl md:text-8xl animate-pulse"></i>
+                    <p class="font-mono text-xs md:text-sm tracking-widest text-center">SISTEMA LISTO</p>
+                </div>
+
+                <img id="resultImage"
+                    class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full" src="">
+                <video id="resultVideo"
+                    class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full"
+                    controls autoplay loop muted></video>
+
+                <canvas id="canvasSalida"
+                    class="hidden max-w-full max-h-full object-contain shadow-2xl shadow-black/50 w-full h-full"></canvas>
+
+                <div id="customVideoControls"
+                    class="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 w-[95%] md:w-11/12 max-w-sm bg-white/30 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-lg p-1.5 md:p-2 flex items-center gap-2 md:gap-3 hidden z-30 shadow-lg transition-theme">
+                    <button id="btnPlayPause"
+                        class="text-slate-800 dark:text-white hover:text-sar dark:hover:text-sar transition-colors outline-none focus:outline-none ml-1">
                         <i id="playPauseIcon" class="ph-fill ph-pause text-xl md:text-2xl drop-shadow-md"></i>
                     </button>
                     <div class="flex-1 flex items-center gap-1 md:gap-2">
-                        <span id="timeCurrent" class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 text-right drop-shadow-md transition-colors">00:00</span>
-                        <input type="range" id="playbackSlider" value="0" min="0" max="100" step="0.1" class="w-full h-1 bg-slate-400/50 dark:bg-slate-500/50 rounded-lg appearance-none cursor-pointer accent-sar hover:accent-sar-dark outline-none transition-colors">
-                        <span id="timeTotal" class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 drop-shadow-md transition-colors">00:00</span>
+                        <span id="timeCurrent"
+                            class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 text-right drop-shadow-md transition-colors">00:00</span>
+                        <input type="range" id="playbackSlider" value="0" min="0" max="100" step="0.1"
+                            class="w-full h-1 bg-slate-400/50 dark:bg-slate-500/50 rounded-lg appearance-none cursor-pointer accent-sar hover:accent-sar-dark outline-none transition-colors">
+                        <span id="timeTotal"
+                            class="text-[8px] md:text-[9px] font-mono text-slate-800 dark:text-slate-200 font-bold w-6 md:w-7 drop-shadow-md transition-colors">00:00</span>
                     </div>
                 </div>
 
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-3 md:gap-4 backdrop-blur-md z-40 p-4 text-center">
+                <div id="loadingOverlay"
+                    class="absolute inset-0 bg-slate-100/95 dark:bg-bgdark/95 hidden items-center justify-center flex-col gap-3 md:gap-4 backdrop-blur-md z-40 p-4 text-center">
                     <i class="ph ph-radar text-5xl md:text-6xl text-sar animate-spin mb-1 md:mb-2"></i>
-                    <p id="progressText" class="font-mono text-xs md:text-sm tracking-widest text-slate-700 dark:text-slate-300 font-bold uppercase transition-colors">Sincronizando feed...</p>
-                    <div class="w-full max-w-[200px] md:max-w-xs h-2 md:h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner transition-colors">
-                        <div id="progressBar" class="h-full bg-sar transition-all duration-500 ease-out" style="width: 0%"></div>
+                    <p id="progressText"
+                        class="font-mono text-xs md:text-sm tracking-widest text-slate-700 dark:text-slate-300 font-bold uppercase transition-colors">
+                        Sincronizando feed...</p>
+                    <div
+                        class="w-full max-w-[200px] md:max-w-xs h-2 md:h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-300 dark:border-slate-700 shadow-inner transition-colors">
+                        <div id="progressBar" class="h-full bg-sar transition-all duration-500 ease-out"
+                            style="width: 0%"></div>
                     </div>
                     <p id="progressPercent" class="font-mono text-[10px] md:text-xs text-sar font-bold">0%</p>
                 </div>
             </div>
 
-            <div id="actionButtons" class="absolute bottom-8 right-4 md:bottom-12 md:right-12 flex flex-col md:flex-row gap-2 md:gap-4 hidden z-20 origin-bottom-right scale-[0.85] md:scale-100">
-                <button id="btnViewPDF" class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+            <div id="actionButtons"
+                class="absolute bottom-8 right-4 md:bottom-12 md:right-12 flex flex-col md:flex-row gap-2 md:gap-4 hidden z-20 origin-bottom-right scale-[0.85] md:scale-100">
+                <button id="btnViewPDF"
+                    class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
                     <i class="ph-bold ph-eye text-xl md:text-2xl"></i>
-                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER INFORME</span>
+                    <span
+                        class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">VER
+                        INFORME</span>
                 </button>
-                <button id="btnDownloadPDF" class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+                <button id="btnDownloadPDF"
+                    class="p-3 md:p-4 bg-slate-800 text-white border border-slate-600 rounded-full shadow-2xl hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
                     <i class="ph-bold ph-file-pdf text-xl md:text-2xl"></i>
-                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">DESCARGAR INFORME</span>
+                    <span
+                        class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">DESCARGAR
+                        INFORME</span>
                 </button>
-                <button id="btnDownloadVideo" class="p-3 md:p-4 bg-green-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
+                <button id="btnDownloadVideo"
+                    class="p-3 md:p-4 bg-green-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group relative flex justify-center items-center">
                     <i class="ph-bold ph-download-simple text-xl md:text-2xl"></i>
-                    <span class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">FEED DETECCIONES</span>
+                    <span
+                        class="absolute right-full mr-4 md:right-auto md:left-1/2 md:-translate-x-1/2 md:-top-10 bg-black/80 text-[10px] font-mono px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">FEED
+                        DETECCIONES</span>
                 </button>
             </div>
         </section>
     </main>
 
-    <div id="statsModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white dark:bg-panel w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
-            <div class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
-                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate"><i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA</h2>
-                <button id="btnCloseStats" class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i class="ph ph-x text-xl md:text-2xl"></i></button>
+    <div id="statsModal"
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-panel w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+            <div
+                class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
+                <h2
+                    class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate">
+                    <i class="ph ph-chart-bar text-sar"></i> TELEMETRÍA E INTELIGENCIA
+                </h2>
+                <button id="btnCloseStats"
+                    class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all"><i
+                        class="ph ph-x text-xl md:text-2xl"></i></button>
             </div>
-            
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark min-h-0 transition-theme">
+
+            <div
+                class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark min-h-0 transition-theme">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 shrink-0">
-                    <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
-                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">Rendimiento (FPS) por Misión Video</h3>
+                    <div
+                        class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
+                        <h3
+                            class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">
+                            Rendimiento (FPS) por Misión Video</h3>
                         <div class="relative h-32 md:h-48 w-full"><canvas id="fpsChart"></canvas></div>
                     </div>
-                    <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
-                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-1 md:mb-2 uppercase text-center shrink-0">Carga Térmica CPU (%)</h3>
-                        <div class="text-center text-[8px] md:text-[10px] font-mono mb-1 md:mb-2 text-slate-400 shrink-0">
-                            <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO 
+                    <div
+                        class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col transition-theme">
+                        <h3
+                            class="font-mono text-[10px] md:text-xs text-slate-500 mb-1 md:mb-2 uppercase text-center shrink-0">
+                            Carga Térmica CPU (%)</h3>
+                        <div
+                            class="text-center text-[8px] md:text-[10px] font-mono mb-1 md:mb-2 text-slate-400 shrink-0">
+                            <span class="inline-block w-2 h-2 rounded-full bg-[#ff5722] mr-1"></span> VIDEO
                             <span class="inline-block w-2 h-2 rounded-full bg-[#3b82f6] mr-1 ml-3"></span> IMAGEN
                         </div>
                         <div class="relative h-32 md:h-44 w-full"><canvas id="cpuChart"></canvas></div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0 flex flex-col transition-theme">
-                    <h3 class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">Comparativa: Tiempo de Procesamiento Medio (Segundos)</h3>
+                <div
+                    class="bg-white dark:bg-panel p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0 flex flex-col transition-theme">
+                    <h3
+                        class="font-mono text-[10px] md:text-xs text-slate-500 mb-2 md:mb-4 uppercase text-center shrink-0">
+                        Comparativa: Tiempo de Procesamiento Medio (Segundos)</h3>
                     <div class="relative h-20 md:h-24 w-full"><canvas id="modelChart"></canvas></div>
                 </div>
 
-                <div class="bg-white dark:bg-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 transition-theme">
-                    <div class="bg-slate-50 dark:bg-slate-900 p-2 md:p-3 border-b border-slate-200 dark:border-slate-800 transition-theme">
-                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 uppercase tracking-widest"><i class="ph ph-database"></i> Registro Completo</h3>
+                <div
+                    class="bg-white dark:bg-panel rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden shrink-0 transition-theme">
+                    <div
+                        class="bg-slate-50 dark:bg-slate-900 p-2 md:p-3 border-b border-slate-200 dark:border-slate-800 transition-theme">
+                        <h3 class="font-mono text-[10px] md:text-xs text-slate-500 uppercase tracking-widest"><i
+                                class="ph ph-database"></i> Registro Completo</h3>
                     </div>
                     <div class="overflow-x-auto max-h-48 md:max-h-64">
-                        <table class="w-full text-left text-[10px] md:text-xs font-mono border-collapse whitespace-nowrap">
-                            <thead class="sticky top-0 bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-theme">
+                        <table
+                            class="w-full text-left text-[10px] md:text-xs font-mono border-collapse whitespace-nowrap">
+                            <thead
+                                class="sticky top-0 bg-slate-50 dark:bg-slate-900 text-slate-500 border-b border-slate-200 dark:border-slate-800 shadow-sm z-10 transition-theme">
                                 <tr>
-                                    <th class="p-2 md:p-3">FECHA/HORA</th><th class="p-2 md:p-3">OPERACIÓN</th><th class="p-2 md:p-3">MODELO</th><th class="p-2 md:p-3">FPS</th><th class="p-2 md:p-3">LATENCIA</th><th class="p-2 md:p-3">CPU</th>
+                                    <th class="p-2 md:p-3">FECHA/HORA</th>
+                                    <th class="p-2 md:p-3">OPERACIÓN</th>
+                                    <th class="p-2 md:p-3">MODELO</th>
+                                    <th class="p-2 md:p-3">FPS</th>
+                                    <th class="p-2 md:p-3">LATENCIA</th>
+                                    <th class="p-2 md:p-3">CPU</th>
                                 </tr>
                             </thead>
-                            <tbody id="statsTableBody" class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300 transition-theme">
+                            <tbody id="statsTableBody"
+                                class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300 transition-theme">
                             </tbody>
                         </table>
                     </div>
@@ -204,93 +332,152 @@
         </div>
     </div>
 
-    <div id="modelInfoModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white dark:bg-panel w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
-            
-            <div class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
-                <h2 class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate">
+    <div id="modelInfoModal"
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-panel w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden transition-theme">
+
+            <div
+                class="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-black/20 shrink-0 z-20">
+                <h2
+                    class="font-mono font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200 text-sm md:text-base truncate">
                     <i class="ph ph-cpu text-sar text-lg md:text-xl"></i> ESPECIFICACIONES REDES NEURONALES
                 </h2>
-                <button id="btnCloseModelInfo" class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
+                <button id="btnCloseModelInfo"
+                    class="p-1 md:p-2 text-slate-500 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
                     <i class="ph ph-x text-xl md:text-2xl"></i>
                 </button>
             </div>
-            
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark transition-theme">
-                
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-sar rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
-                    <i class="ph-duotone ph-laptop absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+
+            <div
+                class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 bg-slate-100 dark:bg-bgdark transition-theme">
+
+                <div
+                    class="bg-white dark:bg-slate-900 border-l-4 border-sar rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                    <i
+                        class="ph-duotone ph-laptop absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-sar text-white text-[8px] md:text-[10px] font-mono font-bold rounded">EDGE (LOCAL)</span>
+                            <span
+                                class="px-1.5 py-0.5 md:px-2 md:py-1 bg-sar text-white text-[8px] md:text-[10px] font-mono font-bold rounded">EDGE
+                                (LOCAL)</span>
                             <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO26</h3>
                         </div>
-                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La nueva generación de modelos de visión de la serie YOLO. Diseñado con un enfoque estratégico <span class="italic font-bold">"edge-first"</span> (primero periféricos), está optimizado para alta velocidad y bajo consumo de recursos. Su ejecución nativa en el navegador mediante <span class="font-mono text-sar font-bold">WebGPU/WASM</span> permite operar sin conexión a internet, garantizando máxima privacidad táctica y disponibilidad inmediata en misiones SAR (Búsqueda y Salvamento) aisladas.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La nueva generación de
+                            modelos de visión de la serie YOLO. Diseñado con un enfoque estratégico <span
+                                class="italic font-bold">"edge-first"</span> (primero periféricos), está optimizado para
+                            alta velocidad y bajo consumo de recursos. Su ejecución nativa en el navegador mediante
+                            <span class="font-mono text-sar font-bold">WebGPU/WASM</span> permite operar sin conexión a
+                            internet, garantizando máxima privacidad táctica y disponibilidad inmediata en misiones SAR
+                            (Búsqueda y Salvamento) aisladas.
+                        </p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Enero 2026 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> YOLO Edge-First ONNX (FP32)</div>
-                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: 100% Privacidad, Cero latencia de red, Ideal para despliegue en zonas sin cobertura.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓
+                                FORTALEZAS: 100% Privacidad, Cero latencia de red, Ideal para despliegue en zonas sin
+                                cobertura.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
-                    <i class="ph-duotone ph-cloud-check absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
+                <div
+                    class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                    <i
+                        class="ph-duotone ph-cloud-check absolute -right-2 -bottom-2 md:-right-4 md:-bottom-4 text-6xl md:text-8xl text-slate-100 dark:text-slate-800/50 pointer-events-none"></i>
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <span
+                                class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR
+                                (C2)</span>
                             <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v12</h3>
                         </div>
-                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La vanguardia actual en detección de objetos. Implementa mecanismos de atención espacial avanzados (Area Attention) que permiten enfocar el cómputo en zonas críticas de la imagen. Ideal para diferenciar objetivos minúsculos en entornos con mucho ruido visual o camuflaje natural.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La vanguardia actual
+                            en detección de objetos. Implementa mecanismos de atención espacial avanzados (Area
+                            Attention) que permiten enfocar el cómputo en zonas críticas de la imagen. Ideal para
+                            diferenciar objetivos minúsculos en entornos con mucho ruido visual o camuflaje natural.</p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Febrero 2025 (Tencent)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Area Attention / CNN Mejorada</div>
-                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Precisión extrema en objetos minúsculos. Perfecto para drones a gran altitud.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓
+                                FORTALEZAS: Precisión extrema en objetos minúsculos. Perfecto para drones a gran
+                                altitud.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div
+                    class="bg-white dark:bg-slate-900 border-l-4 border-blue-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <span
+                                class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR
+                                (C2)</span>
                             <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v8</h3>
                         </div>
-                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">El estándar de oro de la industria. Extremadamente robusto, estable y equilibrado en términos de latencia y precisión. Su arquitectura libre de anclajes (Anchor-Free) le otorga una gran versatilidad para detectar personas en diferentes posturas o ángulos inesperados durante vuelos rápidos.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">El estándar de oro de
+                            la industria. Extremadamente robusto, estable y equilibrado en términos de latencia y
+                            precisión. Su arquitectura libre de anclajes (Anchor-Free) le otorga una gran versatilidad
+                            para detectar personas en diferentes posturas o ángulos inesperados durante vuelos rápidos.
+                        </p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Enero 2023 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Free CNN</div>
-                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Balance perfecto entre velocidad de inferencia en servidor y precisión constante.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓
+                                FORTALEZAS: Balance perfecto entre velocidad de inferencia en servidor y precisión
+                                constante.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-slate-400 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div
+                    class="bg-white dark:bg-slate-900 border-l-4 border-slate-400 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-slate-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <span
+                                class="px-1.5 py-0.5 md:px-2 md:py-1 bg-slate-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR
+                                (C2)</span>
                             <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">YOLO v5</h3>
                         </div>
-                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">Arquitectura clásica y altamente eficiente en consumo de recursos del nodo. A pesar de ser más antiguo, su extrema ligereza permite procesar feeds de vídeo a altísimos FPS en servidores con hardware limitado, garantizando una respuesta fluida en streamings de larga duración.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">Arquitectura clásica y
+                            altamente eficiente en consumo de recursos del nodo. A pesar de ser más antiguo, su extrema
+                            ligereza permite procesar feeds de vídeo a altísimos FPS en servidores con hardware
+                            limitado, garantizando una respuesta fluida en streamings de larga duración.</p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Junio 2020 (Ultralytics)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Anchor-Based CNN (Legacy)</div>
-                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Inferencia ultrarrápida. Ideal para servidores C2 de baja potencia (CPU).</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓
+                                FORTALEZAS: Inferencia ultrarrápida. Ideal para servidores C2 de baja potencia (CPU).
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 border-l-4 border-purple-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
+                <div
+                    class="bg-white dark:bg-slate-900 border-l-4 border-purple-500 rounded-r-lg md:rounded-r-xl shadow-sm p-4 md:p-5 relative overflow-hidden">
                     <div class="relative z-10">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-purple-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR (C2)</span>
+                            <span
+                                class="px-1.5 py-0.5 md:px-2 md:py-1 bg-purple-500 text-white text-[8px] md:text-[10px] font-mono font-bold rounded">SERVIDOR
+                                (C2)</span>
                             <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-slate-200">RT-DETR</h3>
                         </div>
-                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La revolución de los Transformadores Visuales (ViT) aplicada al análisis de vídeo en tiempo real. A diferencia de las redes convolucionales tradicionales (CNN), evalúa el contexto global de la imagen en cada frame, haciéndolo virtualmente inmune a cortes bruscos, cambios de luz y oclusiones masivas.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
+                        <p class="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 mb-3">La revolución de los
+                            Transformadores Visuales (ViT) aplicada al análisis de vídeo en tiempo real. A diferencia de
+                            las redes convolucionales tradicionales (CNN), evalúa el contexto global de la imagen en
+                            cada frame, haciéndolo virtualmente inmune a cortes bruscos, cambios de luz y oclusiones
+                            masivas.</p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-slate-700 dark:text-slate-300">
                             <div><span class="text-slate-400">» Lanzamiento:</span> Abril 2023 (Baidu)</div>
                             <div><span class="text-slate-400">» Arquitectura:</span> Vision Transformer (ViT)</div>
-                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓ FORTALEZAS: Comprensión global del contexto de la imagen. Altamente resistente a interferencias.</div>
+                            <div class="sm:col-span-2 text-emerald-600 dark:text-emerald-400 font-bold mt-1 md:mt-0">✓
+                                FORTALEZAS: Comprensión global del contexto de la imagen. Altamente resistente a
+                                interferencias.</div>
                         </div>
                     </div>
                 </div>
@@ -304,14 +491,14 @@
         const htmlDoc = document.documentElement;
         let fpsChartObj = null, cpuChartObj = null, modelChartObj = null;
         let backendReady = false; let pingInterval = null;
-        
-        let stopVideoProcessing = false; 
+
+        let stopVideoProcessing = false;
         let sessionOrt = null;
         let streamController = null;
         let currentSessionId = "";
 
         function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
@@ -320,13 +507,13 @@
         const els = {
             themeToggle: document.getElementById('themeToggle'), themeIcon: document.getElementById('themeIcon'),
             btnProcess: document.getElementById('btnProcess'), fileInput: document.getElementById('fileInput'),
-            resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'), 
-            canvasSalida: document.getElementById('canvasSalida'), 
+            resultImage: document.getElementById('resultImage'), resultVideo: document.getElementById('resultVideo'),
+            canvasSalida: document.getElementById('canvasSalida'),
             customVideoControls: document.getElementById('customVideoControls'), btnPlayPause: document.getElementById('btnPlayPause'),
             playPauseIcon: document.getElementById('playPauseIcon'), playbackSlider: document.getElementById('playbackSlider'),
             timeCurrent: document.getElementById('timeCurrent'), timeTotal: document.getElementById('timeTotal'),
-            loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'), 
-            btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'), 
+            loading: document.getElementById('loadingOverlay'), placeholder: document.getElementById('placeholder'),
+            btnStats: document.getElementById('btnOpenStats'), statsModal: document.getElementById('statsModal'),
             btnCloseStats: document.getElementById('btnCloseStats'), statsTable: document.getElementById('statsTableBody'),
             nodeStatusBg: document.getElementById('nodeStatusBg'), nodeStatusDot: document.getElementById('nodeStatusDot'),
             nodeStatusPing: document.getElementById('nodeStatusPing'), nodeStatusText: document.getElementById('nodeStatusText'),
@@ -379,7 +566,7 @@
                 } else { setBackendDisconnected(); }
             } catch (error) { setBackendDisconnected(); }
         }
-        
+
         startPing(); checkBackend();
 
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -399,15 +586,15 @@
         const fileNameDisplay = document.getElementById('fileName');
 
         dropZone.onclick = () => els.fileInput.click();
-        
+
         els.fileInput.onchange = (e) => {
             selectedFile = e.target.files[0];
-            if(selectedFile) fileNameDisplay.textContent = selectedFile.name;
-            stopVideoProcessing = true; 
-            els.canvasSalida.classList.add('hidden'); 
+            if (selectedFile) fileNameDisplay.textContent = selectedFile.name;
+            stopVideoProcessing = true;
+            els.canvasSalida.classList.add('hidden');
             els.customVideoControls.classList.add('hidden');
         };
-        
+
         document.getElementById('confSlider').oninput = (e) => document.getElementById('confValue').textContent = e.target.value;
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -421,8 +608,8 @@
 
         dropZone.addEventListener('drop', async (e) => {
             const dt = e.dataTransfer;
-            stopVideoProcessing = true; 
-            els.canvasSalida.classList.add('hidden'); 
+            stopVideoProcessing = true;
+            els.canvasSalida.classList.add('hidden');
             els.customVideoControls.classList.add('hidden');
 
             if (dt.files && dt.files.length > 0) {
@@ -447,17 +634,17 @@
                 }
             }
         }, false);
-        
+
         async function listenToProgressStream(sessionId) {
             if (streamController) streamController.abort();
             streamController = new AbortController();
 
             try {
-                const response = await fetch(`${NGROK_URL}/stream_progreso/?session_id=${sessionId}`, { 
+                const response = await fetch(`${NGROK_URL}/stream_progreso/?session_id=${sessionId}`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' },
-                    signal: streamController.signal 
+                    signal: streamController.signal
                 });
-                
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
 
@@ -472,38 +659,38 @@
                             els.progressBar.style.width = `${estado.progreso}%`;
                             els.progressPercent.textContent = `${estado.progreso}%`;
                             els.progressText.textContent = estado.fase;
-                        } catch(e) { } 
+                        } catch (e) { }
                     }
                 }
-            } catch (error) { 
-                if (error.name !== 'AbortError') setBackendDisconnected(); 
+            } catch (error) {
+                if (error.name !== 'AbortError') setBackendDisconnected();
             }
         }
 
         els.btnProcess.onclick = async () => {
-            if (els.btnProcess.disabled) return; 
+            if (els.btnProcess.disabled) return;
             if (!selectedFile) return alert("Selecciona un archivo de imagen o video.");
-            
+
             const modeloSeleccionado = document.getElementById('modelSelect').value;
             const confThreshold = parseFloat(document.getElementById('confSlider').value);
-            const isVideo = selectedFile.type.startsWith('video');
+            const isVideo = selectedFile.type.startsWith('video') || /\.(mp4|webm|ogg|mov|avi)$/i.test(selectedFile.name);
 
             els.btnProcess.disabled = true;
             els.btnProcess.innerHTML = '<i class="ph ph-spinner animate-spin text-xl md:text-2xl"></i> PROCESANDO...';
 
-            stopVideoProcessing = true; 
-            els.customVideoControls.classList.add('hidden'); 
-            currentSessionId = generateUUID(); 
+            stopVideoProcessing = true;
+            els.customVideoControls.classList.add('hidden');
+            currentSessionId = generateUUID();
 
-            await new Promise(r => setTimeout(r, 100)); 
+            await new Promise(r => setTimeout(r, 100));
 
             try {
                 if (modeloSeleccionado === 'YOLO26-LOCAL') {
                     els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
-                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden');
                     els.canvasSalida.classList.add('hidden');
                     els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
-                    
+
                     els.progressBar.style.width = "0%";
                     els.progressPercent.textContent = "0%";
                     els.progressText.textContent = "PREPARANDO MOTOR EDGE...";
@@ -513,57 +700,57 @@
                     } else {
                         await procesarImagenLocalEdge(selectedFile, confThreshold);
                     }
-                    
+
                     els.actionButtons.classList.remove('hidden');
-                    els.btnDownloadPDF.style.display = 'none'; 
+                    els.btnDownloadPDF.style.display = 'none';
                     els.btnViewPDF.style.display = 'none';
                     els.btnDownloadVideo.style.display = 'flex';
-                    
+
                     els.btnDownloadVideo.onclick = () => {
-                        const enlace = document.createElement('a'); 
-                        enlace.href = els.canvasSalida.toDataURL(isVideo ? 'image/jpeg' : selectedFile.type); 
-                        enlace.download = "SAR_Local_" + selectedFile.name; 
+                        const enlace = document.createElement('a');
+                        enlace.href = els.canvasSalida.toDataURL(isVideo ? 'image/jpeg' : selectedFile.type);
+                        enlace.download = "SAR_Local_" + selectedFile.name;
                         enlace.click();
                     };
-                } 
+                }
                 else {
                     if (!backendReady) return alert("El Nodo GPU C2 está apagado. Inicia Colab primero o usa YOLO26 LOCAL.");
 
                     els.loading.classList.remove('hidden'); els.loading.classList.add('flex');
-                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden'); 
+                    els.resultImage.classList.add('hidden'); els.resultVideo.classList.add('hidden');
                     els.canvasSalida.classList.add('hidden');
                     els.placeholder.classList.add('hidden'); els.actionButtons.classList.add('hidden');
-                    
+
                     els.progressBar.style.width = "0%";
                     els.progressPercent.textContent = "0%";
                     els.progressText.textContent = "INICIALIZANDO NODO...";
 
-                    listenToProgressStream(currentSessionId); 
+                    listenToProgressStream(currentSessionId);
 
                     const fd = new FormData();
                     fd.append('file', selectedFile);
                     fd.append('modelo', modeloSeleccionado);
                     fd.append('conf', confThreshold);
-                    fd.append('session_id', currentSessionId); 
+                    fd.append('session_id', currentSessionId);
 
-                    const res = await fetch(`${NGROK_URL}/analizar_${isVideo?'video':'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
-                    if(!res.ok) throw new Error();
-                    
+                    const res = await fetch(`${NGROK_URL}/analizar_${isVideo ? 'video' : 'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
+                    if (!res.ok) throw new Error();
+
                     const blob = await res.blob();
                     const bUrl = URL.createObjectURL(blob);
 
-                    if(isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
+                    if (isVideo) { els.resultVideo.src = bUrl; els.resultVideo.classList.remove('hidden'); }
                     else { els.resultImage.src = bUrl; els.resultImage.classList.remove('hidden'); }
-                    
+
                     els.actionButtons.classList.remove('hidden');
-                    els.btnDownloadPDF.style.display = 'flex'; 
+                    els.btnDownloadPDF.style.display = 'flex';
                     els.btnViewPDF.style.display = 'flex';
                     els.btnDownloadVideo.style.display = 'flex';
-                    
+
                     els.btnDownloadVideo.onclick = () => {
                         const a = document.createElement('a'); a.href = bUrl; a.download = "SAR_Feed_" + selectedFile.name; a.click();
                     };
-                    
+
                     els.btnDownloadPDF.onclick = async () => {
                         try {
                             const response = await fetch(`${NGROK_URL}/descargar_informe/?session_id=${currentSessionId}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
@@ -585,14 +772,14 @@
                     };
                 }
             } catch (e) {
-                alert("Error crítico durante el análisis del feed remoto."); 
+                alert("Error crítico durante el análisis del feed remoto.");
                 els.placeholder.classList.remove('hidden');
-                if(modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected();
-            } finally { 
-                els.loading.classList.add('hidden'); els.loading.classList.remove('flex'); 
+                if (modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected();
+            } finally {
+                els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
                 els.btnProcess.disabled = false;
                 els.btnProcess.innerHTML = 'ANALIZAR SEÑAL';
-                if (streamController) streamController.abort(); 
+                if (streamController) streamController.abort();
             }
         };
 
@@ -600,8 +787,8 @@
         // MOTOR LOCAL EDGE (ONNXRUNTIME) - PARCHEADO PARA MÓVILES
         // =========================================================================
 
-        const INPUT_SIZE = 640; 
-        
+        const INPUT_SIZE = 640;
+
         async function initONNXSession() {
             if (!sessionOrt) {
                 console.log("Iniciando Motor ONNX...");
@@ -609,7 +796,7 @@
                     // CAMBIO 1: Detección de móviles para forzar un proveedor matemático seguro (WASM puro en lugar de WebGL)
                     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                     const proveedores = isMobile ? ['wasm'] : ['webgpu', 'wasm'];
-                    
+
                     // Configuración para aprovechar todos los hilos del procesador móvil
                     ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 4);
                     ort.env.wasm.simd = true;
@@ -637,11 +824,11 @@
         }
 
         class TacticalTracker {
-            constructor(canvasWidth, canvasHeight, maxPaciencia = 10) { 
+            constructor(canvasWidth, canvasHeight, maxPaciencia = 10) {
                 this.tracks = [];
                 this.nextId = 1;
-                this.maxPaciencia = maxPaciencia; 
-                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.35; 
+                this.maxPaciencia = maxPaciencia;
+                this.maxDist = Math.max(canvasWidth, canvasHeight) * 0.35;
             }
 
             update(detecciones) {
@@ -660,11 +847,11 @@
                     for (let t = 0; t < this.tracks.length; t++) {
                         let dist = calcularDistancia(detecciones[d], this.tracks[t].box);
                         if (dist < this.maxDist) {
-                            matches.push({d, t, score: 1 / (dist + 1)});
+                            matches.push({ d, t, score: 1 / (dist + 1) });
                         }
                     }
                 }
-                
+
                 matches.sort((a, b) => b.score - a.score);
 
                 for (let match of matches) {
@@ -681,14 +868,14 @@
                         let cyNew = (det[1] + det[3]) / 2;
 
                         let framesPasados = track.age === 0 ? 1 : track.age;
-                        
+
                         track.vx = ((cxNew - cxOld) / framesPasados) * 0.4;
                         track.vy = ((cyNew - cyOld) / framesPasados) * 0.4;
 
                         track.box = [...det];
                         track.lastSeenBox = [...det];
                         track.score = det[4];
-                        track.age = 0; 
+                        track.age = 0;
                     }
                 }
 
@@ -707,7 +894,7 @@
         }
 
         function extraerCajasRaw(outputData, ratio, padX, padY, confThreshold) {
-            const numDetections = outputData.length / 6; 
+            const numDetections = outputData.length / 6;
             let cajas = [];
 
             for (let i = 0; i < numDetections; i++) {
@@ -727,14 +914,14 @@
         }
 
         function dibujarCajas(cajas, ctx, totalCount = null) {
-            const colorTáctico = "#ff5722"; 
-            
+            const colorTáctico = "#ff5722";
+
             // --- ESCALADO DINÁMICO (Para resoluciones locales 4K) ---
             const cW = ctx.canvas.width;
             const cH = ctx.canvas.height;
             const dimensionMenor = Math.min(cW, cH);
             // Usamos 800px como "resolución base"
-            const s = Math.max(1, dimensionMenor / 800); 
+            const s = Math.max(1, dimensionMenor / 800);
 
             const lineWidth = Math.max(2, Math.round(3 * s));
             const fontSize = Math.round(16 * s);
@@ -746,7 +933,7 @@
 
             for (let obj of cajas) {
                 let x1, y1, x2, y2, score, textoId = "";
-                
+
                 if (obj.id !== undefined) {
                     [x1, y1, x2, y2] = obj.box;
                     score = obj.score;
@@ -758,19 +945,19 @@
                 const rectW = x2 - x1; const rectH = y2 - y1;
 
                 // Caja Exterior Naranja SAR
-                ctx.strokeStyle = colorTáctico; 
-                ctx.fillStyle = "rgba(255, 87, 34, 0.15)"; 
+                ctx.strokeStyle = colorTáctico;
+                ctx.fillStyle = "rgba(255, 87, 34, 0.15)";
                 ctx.beginPath(); ctx.rect(x1, y1, rectW, rectH); ctx.stroke(); ctx.fill();
 
                 // Configurar texto
                 const text = `${textoId}PER ${(score * 100).toFixed(0)}%`;
                 const textWidth = ctx.measureText(text).width;
                 const boxH = fontSize + (padY * 2);
-                
+
                 // Fondo Negro Puro
                 ctx.fillStyle = "#000000";
                 ctx.fillRect(x1, y1 - boxH, textWidth + (padX * 2), boxH);
-                
+
                 // Texto Blanco Puro
                 ctx.fillStyle = "#ffffff";
                 ctx.fillText(text, x1 + padX, y1 - Math.round(padY * 1.2));
@@ -781,13 +968,13 @@
                 const hudW = Math.round(300 * s);
                 const hudH = Math.round(55 * s);
                 const hudFontSize = Math.round(18 * s);
-                
+
                 ctx.fillStyle = "#000000";
                 ctx.fillRect(hudPad, hudPad, hudW, hudH);
-                
+
                 ctx.strokeStyle = colorTáctico;
                 ctx.strokeRect(hudPad, hudPad, hudW, hudH);
-                
+
                 ctx.fillStyle = "#ffffff";
                 ctx.font = `bold ${hudFontSize}px 'JetBrains Mono', monospace`;
                 ctx.fillText(`OBJETIVOS UNICOS: ${totalCount}`, hudPad + Math.round(15 * s), hudPad + Math.round(35 * s));
@@ -803,11 +990,11 @@
                     canvas.classList.remove('hidden');
                     const ctx = canvas.getContext('2d');
                     canvas.width = img.width; canvas.height = img.height;
-                    
+
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    
+
                     const ratio = Math.min(INPUT_SIZE / img.width, INPUT_SIZE / img.height);
                     const drawW = img.width * ratio;
                     const drawH = img.height * ratio;
@@ -817,30 +1004,30 @@
                     tempCtx.fillStyle = "rgb(114, 114, 114)";
                     tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
                     tempCtx.drawImage(img, padX, padY, drawW, drawH);
-                    
+
                     const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
                     const area = INPUT_SIZE * INPUT_SIZE;
                     const floatData = new Float32Array(area * 3);
                     const inv255 = 0.003921568627;
-                    
+
                     for (let i = 0; i < area; i++) {
-                        const pixelIndex = i << 2; 
-                        floatData[i]            = imgData[pixelIndex] * inv255;
-                        floatData[area + i]     = imgData[pixelIndex + 1] * inv255;
+                        const pixelIndex = i << 2;
+                        floatData[i] = imgData[pixelIndex] * inv255;
+                        floatData[area + i] = imgData[pixelIndex + 1] * inv255;
                         floatData[area * 2 + i] = imgData[pixelIndex + 2] * inv255;
                     }
-                    
+
                     const tensor = new ort.Tensor('float32', floatData, [1, 3, INPUT_SIZE, INPUT_SIZE]);
                     const feeds = {}; feeds[session.inputNames[0]] = tensor;
-                    
+
                     els.progressText.textContent = "EJECUTANDO INFERENCIA EDGE...";
                     const results = await session.run(feeds);
-                    
+
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
+
                     let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, ratio, padX, padY, confThreshold);
                     dibujarCajas(cajasRaw, ctx, cajasRaw.length);
-                    
+
                     resolve();
                 };
                 img.src = URL.createObjectURL(file);
@@ -850,29 +1037,29 @@
         async function procesarVideoLocalEdge(file, confThreshold) {
             stopVideoProcessing = false;
             const session = await initONNXSession();
-            
+
             const video = document.createElement('video');
             video.src = URL.createObjectURL(file);
             video.muted = true; video.playsInline = true; video.loop = true;
-            
+
             return new Promise((resolve, reject) => {
                 video.onloadeddata = async () => {
                     const canvas = els.canvasSalida;
                     canvas.classList.remove('hidden');
                     const ctx = canvas.getContext('2d');
                     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                    
+
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = INPUT_SIZE; tempCanvas.height = INPUT_SIZE;
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    
+
                     const duracionTotal = video.duration;
                     let tiempoActual = 0;
-                    const fpsInferencia = 1.5; 
-                    const salto = 1 / fpsInferencia; 
-                    
+                    const fpsInferencia = 1.5;
+                    const salto = 1 / fpsInferencia;
+
                     const deteccionesGuardadas = {};
-                    const tracker = new TacticalTracker(canvas.width, canvas.height, 10); 
+                    const tracker = new TacticalTracker(canvas.width, canvas.height, 10);
                     let totalContados = 0;
 
                     const ratio = Math.min(INPUT_SIZE / video.videoWidth, INPUT_SIZE / video.videoHeight);
@@ -886,56 +1073,56 @@
                     const inv255 = 0.003921568627;
 
                     els.progressText.textContent = "INFERENCIA EDGE + TRACKING...";
-                    
+
                     try {
                         while (tiempoActual <= duracionTotal && !stopVideoProcessing) {
                             video.currentTime = tiempoActual;
-                            
+
                             // CAMBIO 2: Retardo seguro para que iOS/Android rendericen el frame
-                            await new Promise(r => { 
+                            await new Promise(r => {
                                 video.onseeked = () => {
                                     setTimeout(r, 40); // 40ms de pausa para evitar el Canvas Negro
-                                }; 
-                            }); 
-                            
+                                };
+                            });
+
                             tempCtx.fillStyle = "rgb(114, 114, 114)";
                             tempCtx.fillRect(0, 0, INPUT_SIZE, INPUT_SIZE);
                             tempCtx.drawImage(video, padX, padY, drawW, drawH);
 
                             const imgData = tempCtx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
-                            
+
                             for (let i = 0; i < area; i++) {
-                                const pixelIndex = i << 2; 
-                                floatData[i]            = imgData[pixelIndex] * inv255;
-                                floatData[area + i]     = imgData[pixelIndex + 1] * inv255;
+                                const pixelIndex = i << 2;
+                                floatData[i] = imgData[pixelIndex] * inv255;
+                                floatData[area + i] = imgData[pixelIndex + 1] * inv255;
                                 floatData[area * 2 + i] = imgData[pixelIndex + 2] * inv255;
                             }
-                            
+
                             const tensor = new ort.Tensor('float32', floatData, [1, 3, INPUT_SIZE, INPUT_SIZE]);
                             const feeds = {}; feeds[session.inputNames[0]] = tensor;
-                            
+
                             const results = await session.run(feeds);
-                            
+
                             let cajasRaw = extraerCajasRaw(results[session.outputNames[0]].data, ratio, padX, padY, confThreshold);
-                            
+
                             let tracksActuales = tracker.update(cajasRaw);
                             let tracksVisibles = tracksActuales.filter(t => t.age === 0);
-                            
+
                             deteccionesGuardadas[tiempoActual.toFixed(2)] = tracksVisibles.map(t => ({
                                 box: [...t.box], score: t.score, id: t.id
                             }));
-                            
+
                             totalContados = tracker.nextId - 1;
 
                             const pct = Math.min(100, Math.round((tiempoActual / duracionTotal) * 100));
                             els.progressBar.style.width = `${pct}%`;
                             els.progressPercent.textContent = `${pct}%`;
-                            
+
                             tiempoActual += salto;
                         }
-                        
+
                         if (stopVideoProcessing) { resolve(); return; }
-                        
+
                         els.customVideoControls.classList.remove('hidden');
                         els.playbackSlider.max = duracionTotal;
                         els.timeTotal.textContent = formatTime(duracionTotal);
@@ -944,7 +1131,7 @@
                         let isDraggingSlider = false;
 
                         els.btnPlayPause.onclick = () => {
-                            if (video.paused) { video.play(); els.playPauseIcon.classList.replace('ph-play', 'ph-pause'); } 
+                            if (video.paused) { video.play(); els.playPauseIcon.classList.replace('ph-play', 'ph-pause'); }
                             else { video.pause(); els.playPauseIcon.classList.replace('ph-pause', 'ph-play'); }
                         };
                         els.canvasSalida.onclick = () => els.btnPlayPause.click();
@@ -957,19 +1144,19 @@
                         };
                         els.playbackSlider.onchange = () => { isDraggingSlider = false; };
 
-                        resolve(); 
-                        
+                        resolve();
+
                         video.currentTime = 0;
                         await new Promise(r => { video.onseeked = r; });
                         await video.play();
-                        
+
                         function renderFrame() {
                             if (stopVideoProcessing) return;
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            
+
                             const t = video.currentTime;
                             const tAproximado = (Math.round(t * fpsInferencia) / fpsInferencia).toFixed(2);
-                            
+
                             const objetosTrackeados = deteccionesGuardadas[tAproximado];
                             if (objetosTrackeados) {
                                 dibujarCajas(objetosTrackeados, ctx, totalContados);
@@ -993,17 +1180,26 @@
         // =========================================================================
         // ESTADÍSTICAS Y TELEMETRÍA
         // =========================================================================
-        
+
         els.btnStats.onclick = () => { els.statsModal.classList.replace('hidden', 'flex'); els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center opacity-50"><i class="ph ph-spinner animate-spin text-2xl"></i></td></tr>'; loadStatsData(); };
         els.btnCloseStats.onclick = () => els.statsModal.classList.replace('flex', 'hidden');
 
         async function loadStatsData() {
             if (!backendReady) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">NODO C2 DESCONECTADO</td></tr>'; return; }
             try {
-                const response = await fetch(`${NGROK_URL}/estadisticas/`, { headers: { 'ngrok-skip-browser-warning': 'true' }});
+                const response = await fetch(`${NGROK_URL}/estadisticas/`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
                 if (!response.ok) throw new Error();
                 const csvText = await response.text();
-                Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { renderTable(results.data); renderCharts(results.data); } });
+                Papa.parse(csvText, {
+                    header: true, dynamicTyping: true, skipEmptyLines: true, complete: function (results) {
+                        if (!results.data || results.data.length === 0) {
+                            els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-500 font-bold">SIN REGISTROS DE MISIONES</td></tr>';
+                            if (fpsChartObj) fpsChartObj.destroy(); if (cpuChartObj) cpuChartObj.destroy(); if (modelChartObj) modelChartObj.destroy();
+                            return;
+                        }
+                        renderTable(results.data); renderCharts(results.data);
+                    }
+                });
             } catch (error) { els.statsTable.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-500">ERROR AL RECUPERAR TELEMETRÍA</td></tr>'; }
         }
 
@@ -1022,15 +1218,109 @@
             }).join('');
         }
         function renderCharts(data) {
-            if(fpsChartObj) fpsChartObj.destroy(); if(cpuChartObj) cpuChartObj.destroy(); if(modelChartObj) modelChartObj.destroy();
+            if (fpsChartObj) fpsChartObj.destroy(); if (cpuChartObj) cpuChartObj.destroy(); if (modelChartObj) modelChartObj.destroy();
             const isDark = htmlDoc.classList.contains('dark'); const textColor = isDark ? '#94a3b8' : '#475569'; const gridColor = isDark ? '#1e293b' : '#e2e8f0';
             Chart.defaults.color = textColor; Chart.defaults.font.family = "'JetBrains Mono', monospace";
             const videoData = data.filter(d => d.Tipo === 'VIDEO');
-            fpsChartObj = new Chart(document.getElementById('fpsChart'), { type: 'line', data: { labels: videoData.map((_, i) => `Vis #${i+1}`), datasets: [{ label: 'FPS', data: videoData.map(d => d.FPS_Promedio), borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } } });
-            cpuChartObj = new Chart(document.getElementById('cpuChart'), { type: 'bar', data: { labels: data.map((_, i) => `Op #${i+1}`), datasets: [{ label: '% Uso CPU', data: data.map(d => d.CPU_Usage), backgroundColor: data.map(d => d.Tipo === 'VIDEO' ? 'rgba(255, 87, 34, 0.9)' : 'rgba(59, 130, 246, 0.9)'), borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } } });
+            fpsChartObj = new Chart(document.getElementById('fpsChart'), { type: 'line', data: { labels: videoData.map((_, i) => `Vis #${i + 1}`), datasets: [{ label: 'FPS', data: videoData.map(d => d.FPS_Promedio), borderColor: '#ff5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } } });
+            cpuChartObj = new Chart(document.getElementById('cpuChart'), { type: 'bar', data: { labels: data.map((_, i) => `Op #${i + 1}`), datasets: [{ label: '% Uso CPU', data: data.map(d => d.CPU_Usage), backgroundColor: data.map(d => d.Tipo === 'VIDEO' ? 'rgba(255, 87, 34, 0.9)' : 'rgba(59, 130, 246, 0.9)'), borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } } });
             const modelosUnicos = [...new Set(data.map(d => d.Modelo))];
             modelChartObj = new Chart(document.getElementById('modelChart'), { type: 'bar', data: { labels: modelosUnicos, datasets: [{ label: 'Latencia Media (s)', data: modelosUnicos.map(modelo => { const records = data.filter(d => d.Modelo === modelo); return (records.reduce((acc, curr) => acc + curr.Duracion_Sec, 0) / records.length).toFixed(2); }), backgroundColor: 'rgba(16, 185, 129, 0.8)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: gridColor } }, y: { grid: { display: false } } } } });
         }
     </script>
+    <!-- =====================================================================
+         PWA: Banner de instalación
+         Se muestra automáticamente cuando el navegador dispara beforeinstallprompt.
+         El agente de campo puede instalarlo como app nativa desde aquí.
+         ===================================================================== -->
+    <div id="pwa-banner"
+        class="hidden fixed top-2 md:top-3 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-4 py-2 md:py-3 rounded-xl border border-sar/40 bg-panel/95 backdrop-blur-md shadow-2xl shadow-black/60 text-sm font-mono max-w-[90vw]">
+        <i class="ph ph-device-mobile-camera text-sar text-2xl shrink-0"></i>
+        <div class="flex flex-col leading-tight">
+            <span class="text-white font-bold text-xs uppercase tracking-widest">Instalar SAR C2</span>
+            <span class="text-slate-400 text-[10px]">Disponible sin conexión · Sin tienda de apps</span>
+        </div>
+        <button id="pwa-install-btn"
+            class="ml-2 px-3 py-1.5 rounded-lg bg-sar hover:bg-sar-dark text-white font-bold text-xs uppercase tracking-wider transition-all shrink-0">
+            Instalar
+        </button>
+        <button id="pwa-dismiss-btn" class="p-1 text-slate-500 hover:text-slate-300 transition-colors">
+            <i class="ph ph-x text-base"></i>
+        </button>
+    </div>
+
+    <script>
+        // =====================================================================
+        // PWA: Registro del Service Worker + lógica de instalación
+        // =====================================================================
+        (function initPWA() {
+            // 1. Registrar Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => {
+                            console.log('[PWA] Service Worker registrado:', reg.scope);
+
+                            // Notificar al usuario si hay una nueva versión disponible
+                            reg.addEventListener('updatefound', () => {
+                                const newWorker = reg.installing;
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        console.log('[PWA] Nueva versión disponible.');
+                                        // Opcional: mostrar toast de actualización
+                                    }
+                                });
+                            });
+                        })
+                        .catch(err => console.warn('[PWA] Error al registrar SW:', err));
+                });
+            }
+
+            // 2. Capturar el evento de instalación (beforeinstallprompt)
+            let deferredPrompt = null;
+            const banner = document.getElementById('pwa-banner');
+            const installBtn = document.getElementById('pwa-install-btn');
+            const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                // Mostrar el banner solo si el usuario no lo ha descartado antes
+                if (!sessionStorage.getItem('pwa-banner-dismissed')) {
+                    banner.classList.remove('hidden');
+                    banner.classList.add('flex');
+                }
+            });
+
+            installBtn?.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                banner.classList.add('hidden');
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('[PWA] Resultado instalación:', outcome);
+                deferredPrompt = null;
+            });
+
+            dismissBtn?.addEventListener('click', () => {
+                banner.classList.add('hidden');
+                sessionStorage.setItem('pwa-banner-dismissed', '1');
+            });
+
+            // 3. Ocultar el banner si ya está instalada como PWA
+            window.addEventListener('appinstalled', () => {
+                banner.classList.add('hidden');
+                deferredPrompt = null;
+                console.log('[PWA] App instalada correctamente.');
+            });
+
+            // 4. Detectar si ya corre en modo standalone (ya instalada)
+            if (window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true) {
+                console.log('[PWA] Ejecutándose en modo standalone (app instalada).');
+            }
+        })();
+    </script>
+
 </body>
+
 </html>
