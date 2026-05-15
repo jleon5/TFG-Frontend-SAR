@@ -4,7 +4,7 @@
 //             Network-Only para llamadas al backend (Ngrok).
 // =========================================================================
 
-const CACHE_VERSION = 'sar-c2-v3';
+const CACHE_VERSION = 'sar-c2-v5';
 
 // Assets críticos que se pre-cachean en la instalación.
 // Sin estos, la app no puede arrancar offline.
@@ -29,6 +29,7 @@ const CDN_ORIGINS = [
 
 // Hosts de backend: NUNCA cachear, siempre red.
 const NETWORK_ONLY_HOSTS = [
+  'ngrok-free.dev',
   'ngrok-free.app',
   'ngrok.io',
   'ngrok.app',
@@ -91,6 +92,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // 0. BYPASS PARA WATCHDOG (Fuerza pasar por la red física)
+  if (url.searchParams.has('network_check')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // 1. NETWORK-ONLY: llamadas al backend Ngrok — nunca cachear
   if (NETWORK_ONLY_HOSTS.some(host => url.hostname.includes(host))) {
     event.respondWith(fetch(request));
@@ -113,6 +120,10 @@ self.addEventListener('fetch', (event) => {
 
   // 4. Assets locales (index.html, iconos, manifest) — Cache-First
   if (url.origin === self.location.origin) {
+    if (url.searchParams.has('network_check')) {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(cacheFirst(request));
     return;
   }

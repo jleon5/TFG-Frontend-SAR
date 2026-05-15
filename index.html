@@ -495,6 +495,8 @@
         let stopVideoProcessing = false;
         let sessionOrt = null;
         let streamController = null;
+        let analysisController = null;
+        let isRemoteAnalysisRunning = false;
         let currentSessionId = "";
 
         function generateUUID() {
@@ -535,7 +537,23 @@
             return `${m}:${s}`;
         }
 
-        function setBackendDisconnected() {
+        function setBackendDisconnected(reason = "remoto") {
+            if (!navigator.onLine) reason = "red";
+
+            if (isRemoteAnalysisRunning) {
+                if (analysisController) analysisController.abort();
+                if (streamController) streamController.abort();
+                isRemoteAnalysisRunning = false;
+
+                els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
+                els.btnProcess.disabled = false;
+                els.btnProcess.innerHTML = 'ANALIZAR SEÑAL';
+                els.placeholder.classList.remove('hidden');
+
+                const msg = reason === "red" ? "de red del dispositivo" : "con el nodo C2 remoto";
+                setTimeout(() => alert(`ALERTA DE SISTEMA:\n\nSe ha perdido la conexión ${msg}. El análisis en curso ha sido cancelado.`), 50);
+            }
+
             if (backendReady || els.nodeStatusText.textContent === "BUSCANDO SEÑAL...") {
                 els.nodeStatusBg.className = "w-full bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-colors duration-500";
                 els.nodeStatusDot.className = "relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500";
@@ -568,6 +586,20 @@
         }
 
         startPing(); checkBackend();
+
+        setInterval(() => {
+            if (!navigator.onLine && isRemoteAnalysisRunning) {
+                setBackendDisconnected("red");
+            }
+        }, 1000);
+
+        window.addEventListener('offline', () => {
+            setBackendDisconnected("red");
+        });
+
+        window.addEventListener('online', () => {
+            checkBackend();
+        });
 
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             htmlDoc.classList.add('dark'); els.themeIcon.classList.replace('ph-moon-stars', 'ph-sun');
@@ -645,11 +677,34 @@
                     signal: streamController.signal
                 });
 
+                if (!response.ok) throw new Error("Network stream failed");
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
 
+                let lastProgressTime = Date.now();
+                const watchdog = setInterval(async () => {
+                    if (Date.now() - lastProgressTime > 12000) {
+                        try {
+                            const controller = new AbortController();
+                            const timeout = setTimeout(() => controller.abort(), 4000);
+                            // Verificamos conexión real usando múltiples CDNs para evitar falsos positivos por bloqueos de ISP
+                            await Promise.any([
+                                fetch('https://www.google.com/favicon.ico?network_check=1', { mode: 'no-cors', cache: 'no-store', signal: controller.signal }),
+                                fetch('https://cdn.tailwindcss.com/?network_check=1', { mode: 'no-cors', cache: 'no-store', signal: controller.signal })
+                            ]);
+                            clearTimeout(timeout);
+                        } catch (e) {
+                            // Si TODOS los endpoints fallan o dan timeout, la red física está caída
+                            clearInterval(watchdog);
+                            setBackendDisconnected("red");
+                        }
+                    }
+                }, 5000);
+
                 while (true) {
                     const { value, done } = await reader.read();
+                    lastProgressTime = Date.now();
                     if (done) break;
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n').filter(line => line.trim() !== '');
@@ -662,8 +717,9 @@
                         } catch (e) { }
                     }
                 }
+                clearInterval(watchdog);
             } catch (error) {
-                if (error.name !== 'AbortError') setBackendDisconnected();
+                if (error.name !== 'AbortError') setBackendDisconnected(!navigator.onLine ? "red" : "remoto");
             }
         }
 
@@ -726,6 +782,8 @@
                     els.progressText.textContent = "INICIALIZANDO NODO...";
 
                     listenToProgressStream(currentSessionId);
+                    isRemoteAnalysisRunning = true;
+                    analysisController = new AbortController();
 
                     const fd = new FormData();
                     fd.append('file', selectedFile);
@@ -733,7 +791,7 @@
                     fd.append('conf', confThreshold);
                     fd.append('session_id', currentSessionId);
 
-                    const res = await fetch(`${NGROK_URL}/analizar_${isVideo ? 'video' : 'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' } });
+                    const res = await fetch(`${NGROK_URL}/analizar_${isVideo ? 'video' : 'imagen'}/`, { method: 'POST', body: fd, headers: { 'ngrok-skip-browser-warning': 'true' }, signal: analysisController.signal });
                     if (!res.ok) throw new Error();
 
                     const blob = await res.blob();
@@ -772,10 +830,19 @@
                     };
                 }
             } catch (e) {
-                alert("Error crítico durante el análisis del feed remoto.");
-                els.placeholder.classList.remove('hidden');
-                if (modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected();
+                if (e.name === 'AbortError') {
+                    console.log('Análisis cancelado por pérdida de conexión');
+                } else {
+                    els.placeholder.classList.remove('hidden');
+                    if (!navigator.onLine) {
+                        if (modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected("red");
+                    } else {
+                        alert("Error crítico durante el análisis del feed remoto.");
+                        if (modeloSeleccionado !== 'YOLO26-LOCAL') setBackendDisconnected();
+                    }
+                }
             } finally {
+                isRemoteAnalysisRunning = false;
                 els.loading.classList.add('hidden'); els.loading.classList.remove('flex');
                 els.btnProcess.disabled = false;
                 els.btnProcess.innerHTML = 'ANALIZAR SEÑAL';
